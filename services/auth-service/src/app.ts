@@ -1,0 +1,25 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { authRoutes } from './routes/auth.routes';
+import { errorHandler } from './middleware/error-handler';
+
+const app = express();
+
+// ─── Middleware ───
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+// ─── Health Check ───
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'auth-service', timestamp: new Date().toISOString() });
+});
+
+// ─── Routes ───
+app.use('/api/v1/auth', authRoutes);
+
+// ─── Error Handling ───
+app.use(errorHandler);
+
+export { app };

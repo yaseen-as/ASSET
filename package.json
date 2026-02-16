@@ -1,0 +1,36 @@
+{
+  "name": "asset-management-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Swing Trade Asset & Recommendation Platform",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "gateway": "npm run dev --workspace=services/api-gateway",
+    "auth": "npm run dev --workspace=services/auth-service",
+    "user": "npm run dev --workspace=services/user-service",
+    "broker": "npm run dev --workspace=services/broker-service",
+    "market": "npm run dev --workspace=services/market-data-service",
+    "portfolio": "npm run dev --workspace=services/portfolio-service",
+    "recommendation": "npm run dev --workspace=services/recommendation-service",
+    "alert": "npm run dev --workspace=services/alert-service",
+    "notification": "npm run dev --workspace=services/notification-service",
+    "web": "npm run dev --workspace=frontend"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}
