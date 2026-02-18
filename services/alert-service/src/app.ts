@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import alertRoutes from './routes/alert.routes';
 import { createLogger } from './utils/logger';
+import { requestLogger } from './middleware/request-logger';
 
 const logger = createLogger('AlertApp');
 
@@ -11,6 +12,7 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 // Health check
 app.get('/health', (_req, res) => {

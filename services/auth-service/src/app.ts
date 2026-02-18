@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { authRoutes } from './routes/auth.routes';
 import { errorHandler } from './middleware/error-handler';
+import { requestLogger } from './middleware/request-logger';
 
 const app = express();
 
@@ -10,6 +11,7 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 // ─── Health Check ───
 app.get('/health', (_req, res) => {

@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import { authMiddleware } from './middleware/auth.middleware';
 import { correlationIdMiddleware } from './middleware/correlation-id';
 import { defaultLimiter } from './middleware/rate-limiter';
 import { errorHandler } from './middleware/error-handler';
+import { requestLogger } from './middleware/request-logger';
 import { proxyRoutes } from './routes/proxy.routes';
 
 const app = express();
@@ -20,7 +20,7 @@ app.use(
 );
 
 // ─── Logging ───
-app.use(morgan('short'));
+app.use(requestLogger);
 
 // ─── Middleware ───
 app.use(correlationIdMiddleware);
