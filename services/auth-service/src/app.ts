@@ -19,7 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 // ─── Routes ───
-app.use('/api/v1/auth', authRoutes);
+app.use('/', authRoutes);
 
 // ─── Error Handling ───
 app.use(errorHandler);

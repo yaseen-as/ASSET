@@ -14,9 +14,11 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { userId } = await register(name, email, phone, password);
+      const { userId, phoneNumber } = await register(name, email, phone, password);
       toast.success('OTP sent to your phone');
-      navigate('/verify-otp', { state: { userId } });
+      console.log('User ID from registration:', userId);
+      console.log('Phone number from registration:', phoneNumber);
+      navigate('/verify-otp', { state: { userId, phone: phoneNumber } });
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Registration failed');
     }

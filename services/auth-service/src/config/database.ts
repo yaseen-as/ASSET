@@ -16,7 +16,7 @@ export const db = knex({
     max: 10,
   },
   migrations: {
-    directory: '../../migrations',
+    directory: './migrations',
     schemaName: config.db.schema,
     tableName: 'knex_migrations',
   },

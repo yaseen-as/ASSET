@@ -14,7 +14,7 @@ export class AuthService {
   private otpService = new OtpService();
 
   // ─── Register ───
-  async register(email: string, password: string, phone: string): Promise<{ userId: string }> {
+  async register(email: string, password: string, phone: string): Promise<{ userId: string, phone: string }> {
     // Check existing user
     const existingEmail = await this.userRepo.findByEmail(email);
     if (existingEmail) {
@@ -38,7 +38,7 @@ export class AuthService {
 
     logger.info('User registered', { userId: user.id, email });
 
-    return { userId: user.id };
+    return { userId: user.id, phone };
   }
 
   // ─── Verify OTP ───

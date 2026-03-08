@@ -9,7 +9,8 @@ type MessageHandler = (data: unknown) => void;
  */
 export function useWebSocket(url: string, onMessage: MessageHandler) {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+  // const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const user = useAuthStore((s) => s.user);
 
   const connect = useCallback(() => {
@@ -45,7 +46,7 @@ export function useWebSocket(url: string, onMessage: MessageHandler) {
   useEffect(() => {
     connect();
     return () => {
-      clearTimeout(reconnectTimeout.current);
+      clearTimeout(reconnectTimeout.current as ReturnType<typeof setTimeout>);
       wsRef.current?.close();
     };
   }, [connect]);

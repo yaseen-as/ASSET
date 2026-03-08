@@ -19,8 +19,8 @@ interface AuthState {
   setUser: (user: User) => void;
 
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, phone: string, password: string) => Promise<{ userId: string }>;
-  verifyOtp: (userId: string, otp: string) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string) => Promise<{ userId: string, phoneNumber: string }>;
+  verifyOtp: (phone: string, otp: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -57,16 +57,17 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const { data } = await api.post('/auth/register', { name, email, phone, password });
-          return { userId: data.data.userId };
+          return { userId: data.data.userId, phoneNumber: data.data.phone };
         } finally {
           set({ isLoading: false });
         }
       },
 
-      verifyOtp: async (userId, otp) => {
+      verifyOtp: async (phone, otp) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/verify-otp', { userId, otp });
+          const { data } = await api.post('/auth/verify-otp', { phone, otp });
+          console.log('OTP verification response:', data.data);
           set({
             accessToken: data.data.accessToken,
             refreshToken: data.data.refreshToken,

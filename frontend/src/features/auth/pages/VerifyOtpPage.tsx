@@ -8,9 +8,12 @@ export default function VerifyOtpPage() {
   const { verifyOtp, isLoading } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const userId = (location.state as { userId?: string })?.userId;
+  const phone = (location.state as { phone?: string, userId: string })?.phone;
+  const userId = (location.state as { phone?: string, userId: string })?.userId;
+  console.log('Phone from state:', phone);
+  console.log('User ID from state:', userId);
 
-  if (!userId) {
+  if (!phone) {
     navigate('/register');
     return null;
   }
@@ -18,7 +21,7 @@ export default function VerifyOtpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await verifyOtp(userId, otp);
+      await verifyOtp(phone, otp);
       toast.success('Account verified!');
       navigate('/');
     } catch (err: any) {
