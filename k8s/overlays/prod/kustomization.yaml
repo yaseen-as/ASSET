@@ -1,0 +1,59 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ─── Base ────────────────────────────────────────────────────────────────────
+resources:
+  - ../../base
+
+# ─── Prod-specific label on every resource ───────────────────────────────────
+commonLabels:
+  environment: prod
+
+# ─── Image tags (pin to specific versions in production) ─────────────────────
+images:
+  - name: yaseenas/api-gateway
+    newTag: "1.0.0"
+  - name: yaseenas/auth-service
+    newTag: "1.0.0"
+  - name: yaseenas/user-service
+    newTag: "1.0.0"
+  - name: yaseenas/broker-service
+    newTag: "1.0.0"
+  - name: yaseenas/market-data-service
+    newTag: "1.0.0"
+  - name: yaseenas/portfolio-service
+    newTag: "1.0.0"
+  - name: yaseenas/recommendation-service
+    newTag: "1.0.0"
+  - name: yaseenas/alert-service
+    newTag: "1.0.0"
+  - name: yaseenas/notification-service
+    newTag: "1.0.0"
+  - name: yaseenas/react-frontend
+    newTag: "1.0.0"
+
+# ─── Patches ─────────────────────────────────────────────────────────────────
+patches:
+  # Resource limits for all backend services
+  - path: patches/backend-resources.yaml
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+  # Higher replica count for stateless services
+  - path: patches/backend-replicas.yaml
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+  # Frontend: 3 replicas + resource limits
+  - path: patches/frontend-prod.yaml
+    target:
+      kind: Deployment
+      name: react-frontend
+
+  # Prod ingress hostname
+  - path: patches/ingress-prod.yaml
+    target:
+      kind: Ingress
+      name: platform-ingress

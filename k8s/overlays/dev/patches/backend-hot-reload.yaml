@@ -1,0 +1,52 @@
+# Strategic-merge patch applied to EVERY Deployment with label:
+#   app.kubernetes.io/component=backend
+#
+# What this does:
+#  - Sets replicas to 1 (faster iteration)
+#  - Swaps the prod image for node:20-alpine
+#  - Runs `npm run dev` (ts-node-dev --respawn) instead of the compiled bundle
+#  - Mounts the entire monorepo root from the host so file changes are
+#    immediately visible inside the container → hot-reload without rebuilding
+#
+# Pre-requisites:
+#  • Run `npm install` in the project root on the HOST before applying.
+#  • Create the k3d cluster with the volume mount so the node can see the source:
+#
+#      k3d cluster create dev \
+#        --volume /home/ioss/Desktop/as/asset_management:/app@all
+#
+#  • Then apply: kubectl apply -k k8s/overlays/dev
+#
+# If your project root lives somewhere else, change `hostPath.path` below.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder   # kustomize ignores this when a target selector is used
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: app
+          image: node:20-alpine
+          # workingDir is inherited from base (e.g. /app/services/auth-service)
+          # ts-node-dev watches src/ and restarts on every file change
+          command: ["sh", "-c"]
+          args: ["npm run dev"]
+          env:
+            - name: NODE_ENV
+              value: development
+          # Remove prod readiness/liveness during dev – ts-node-dev takes a few
+          # seconds to compile on first boot; aggressive probes cause restarts.
+          readinessProbe: null
+          livenessProbe: null
+          volumeMounts:
+            - name: source-code
+              mountPath: /app
+      volumes:
+        - name: source-code
+          hostPath:
+            # ⚠ Change this to match your local project root if different
+            path: /home/ioss/Desktop/as/asset_management
+            type: Directory

@@ -1,0 +1,46 @@
+# k3d cluster config for local development with hot-reload
+#
+# This mounts your project root into every cluster node at /app.
+# The dev overlay hostPath volumes then bind /app into each container,
+# so ts-node-dev / Vite pick up your file changes instantly.
+#
+# Usage:
+#   k3d cluster create --config k8s/k3d-dev-config.yaml
+#   kubectl apply -k k8s/overlays/dev
+#
+# Add to /etc/hosts:
+#   127.0.0.1  asset.dev.local
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+
+metadata:
+  name: asset-dev
+
+servers: 1
+agents: 1
+
+ports:
+  - port: 8080:80         # ingress HTTP
+    nodeFilters:
+      - loadbalancer
+  - port: 8443:443        # ingress HTTPS
+    nodeFilters:
+      - loadbalancer
+  - port: 30008:30008     # Jenkins NodePort
+    nodeFilters:
+      - servers:0
+
+volumes:
+  # Mount the monorepo root into all nodes so hostPath volumes work
+  - volume: /home/ioss/Desktop/as/asset_management:/app
+    nodeFilters:
+      - all
+
+options:
+  k3s:
+    extraArgs:
+      # Deploy nginx ingress controller
+      - arg: --disable=traefik
+        nodeFilters:
+          - servers:*

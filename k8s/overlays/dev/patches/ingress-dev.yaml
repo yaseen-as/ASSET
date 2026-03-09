@@ -1,0 +1,24 @@
+# Use a different hostname in dev to avoid clashing with prod
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-ingress
+spec:
+  rules:
+    - host: asset.dev.local
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /()(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: react-frontend-service
+                port:
+                  number: 80

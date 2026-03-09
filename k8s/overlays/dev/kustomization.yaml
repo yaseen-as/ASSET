@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ─── Base ────────────────────────────────────────────────────────────────────
+resources:
+  - ../../base
+
+# ─── Dev-specific label on every resource ────────────────────────────────────
+commonLabels:
+  environment: dev
+
+# ─── Patches ─────────────────────────────────────────────────────────────────
+patches:
+  # 1. All backend services → 1 replica + hot-reload via ts-node-dev + source mount
+  - path: patches/backend-hot-reload.yaml
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"
+
+  # 2. Frontend → Vite dev server with hot-reload
+  - path: patches/frontend-dev.yaml
+    target:
+      kind: Deployment
+      name: react-frontend
+
+  # 3. Frontend service → point to Vite dev server port (5173)
+  - path: patches/frontend-service-dev.yaml
+    target:
+      kind: Service
+      name: react-frontend-service
+
+  # 4. Ingress → use dev hostname (asset.dev.local)
+  - path: patches/ingress-dev.yaml
+    target:
+      kind: Ingress
+      name: platform-ingress

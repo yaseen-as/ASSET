@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - api-gateway/
+  - auth-service/
+  - user-service/
+  - broker-service/
+  - market-data-service/
+  - portfolio-service/
+  - recommendation-service/
+  - alert-service/
+  - notification-service/

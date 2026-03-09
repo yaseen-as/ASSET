@@ -1,0 +1,7 @@
+# Scale all backend services to 2 replicas in production
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder
+spec:
+  replicas: 2

@@ -1,0 +1,9 @@
+# Patch frontend service to point to Vite dev server port (5173)
+apiVersion: v1
+kind: Service
+metadata:
+  name: react-frontend-service
+spec:
+  ports:
+    - port: 80
+      targetPort: 5173

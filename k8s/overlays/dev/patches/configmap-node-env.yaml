@@ -1,0 +1,4 @@
+# NOTE: Kustomize configmap patches are applied per-resource.
+# NODE_ENV is already overridden via the `env` field in backend-hot-reload.yaml.
+# This file is a placeholder — per-configmap patches require individual entries.
+# The env override in the container spec takes precedence over ConfigMap values.

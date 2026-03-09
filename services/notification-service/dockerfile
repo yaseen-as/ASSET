@@ -1,0 +1,25 @@
+# ── Production image for notification-service ─────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json turbo.json ./
+COPY packages/ ./packages/
+COPY services/notification-service/ ./services/notification-service/
+
+RUN npm ci --workspace=services/notification-service --include-workspace-root
+
+WORKDIR /app/services/notification-service
+RUN npm run build
+
+# ── Lean runtime image ────────────────────────────────────────────────────────
+FROM node:20-alpine
+WORKDIR /app/services/notification-service
+
+COPY --from=builder /app/services/notification-service/dist ./dist
+COPY --from=builder /app/services/notification-service/package.json ./
+COPY --from=builder /app/node_modules /app/node_modules
+COPY --from=builder /app/packages /app/packages
+
+EXPOSE 3008
+EXPOSE 3018
+CMD ["node", "dist/server.js"]

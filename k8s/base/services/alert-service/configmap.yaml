@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alert-service-config
+data:
+  SERVICE_NAME: alert-service
+  PORT: "3007"
+  NODE_ENV: production
+  DB_HOST: postgres-service.database.svc.cluster.local
+  DB_PORT: "5432"
+  DB_NAME: asset_management
+  DB_USER: admin
+  DB_PASSWORD: admin123
+  REDIS_URL: redis://redis-service:6379

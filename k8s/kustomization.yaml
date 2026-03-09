@@ -1,0 +1,13 @@
+# Root kustomization — delegates to base.
+# For environment-specific deploys use the overlays instead:
+#
+#   Dev  (hot-reload):  kubectl apply -k k8s/overlays/dev
+#   Prod:               kubectl apply -k k8s/overlays/prod
+#
+# The old flat manifests (db/, frontend/, jenkins/, services/) are kept for
+# reference but are superseded by k8s/base/.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - base/

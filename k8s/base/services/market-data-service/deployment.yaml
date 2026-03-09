@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-data-service
+  labels:
+    app: market-data-service
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: market-data-service
+  template:
+    metadata:
+      labels:
+        app: market-data-service
+        app.kubernetes.io/component: backend
+    spec:
+      containers:
+        - name: app
+          image: yaseenas/market-data-service:latest
+          ports:
+            - containerPort: 3004
+              name: http
+            - containerPort: 3014
+              name: websocket
+          workingDir: /app/services/market-data-service
+          envFrom:
+            - configMapRef:
+                name: market-data-service-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 30
+            periodSeconds: 15

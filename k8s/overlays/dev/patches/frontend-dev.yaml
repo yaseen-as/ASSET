@@ -1,0 +1,36 @@
+# Frontend dev patch: swap nginx for Vite dev server
+# Vite's HMR will reflect code changes instantly in the browser.
+#
+# The frontend source is mounted from the host (same volume as backend).
+# workingDir → /app/frontend  (Vite project root)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-frontend
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: app
+          image: node:20-alpine
+          workingDir: /app/frontend
+          command: ["sh", "-c"]
+          # --host 0.0.0.0 makes Vite reachable from outside the container
+          args: ["npm run dev -- --host 0.0.0.0"]
+          ports:
+            - containerPort: 5173
+          env:
+            - name: NODE_ENV
+              value: development
+          readinessProbe: null
+          livenessProbe: null
+          volumeMounts:
+            - name: source-code
+              mountPath: /app
+      volumes:
+        - name: source-code
+          hostPath:
+            path: /home/ioss/Desktop/as/asset_management
+            type: Directory
