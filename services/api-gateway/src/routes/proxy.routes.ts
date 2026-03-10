@@ -5,183 +5,126 @@ import { authLimiter, orderLimiter } from '../middleware/rate-limiter';
 
 const router = Router();
 
-// ─── Auth Service ───
+// ─── Shared header injector factory ──────────────────────────────────────────
+// Injects authenticated user info and correlation id into every proxied request.
+function makeProxyHandler(includeEmail = false) {
+  return (proxyReq: any, req: Request) => {
+    if (req.user) {
+      proxyReq.setHeader('x-user-id', req.user.userId);
+      if (includeEmail) proxyReq.setHeader('x-user-email', req.user.email);
+    }
+    if (req.correlationId) {
+      proxyReq.setHeader('x-correlation-id', req.correlationId);
+    }
+  };
+}
+
+// ─── Health Check ────────────────────────────────────────────────────────────
+router.get('/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', service: 'api-gateway', timestamp: new Date().toISOString() });
+});
+
+// ─── Auth Service  /v1/auth/* → auth-service:/ ───────────────────────────────
+// Ingress strips /api prefix, so gateway receives /v1/auth/login etc.
+// pathRewrite strips /v1/auth so auth-service receives /login, /register etc.
 router.use(
-  '/api/v1/auth',
+  '/v1/auth',
   authLimiter,
   createProxyMiddleware({
     target: config.services.auth,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-          proxyReq.setHeader('x-user-email', req.user.email);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/auth': '' },
+    on: { proxyReq: makeProxyHandler(true) },
   })
 );
 
-// ─── User Service ───
+// ─── User Service  /v1/users/* → user-service:/ ──────────────────────────────
 router.use(
-  '/api/v1/users',
+  '/v1/users',
   createProxyMiddleware({
     target: config.services.user,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-          proxyReq.setHeader('x-user-email', req.user.email);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/users': '' },
+    on: { proxyReq: makeProxyHandler(true) },
   })
 );
 
-// ─── Broker Service ───
+// ─── Broker Service  /v1/broker/* → broker-service:/ ────────────────────────
+// Order routes get a stricter rate-limiter applied first.
 router.use(
-  '/api/v1/broker/orders',
+  '/v1/broker/orders',
   orderLimiter,
   createProxyMiddleware({
     target: config.services.broker,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/broker': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
 router.use(
-  '/api/v1/broker',
+  '/v1/broker',
   createProxyMiddleware({
     target: config.services.broker,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/broker': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Market Data Service ───
+// ─── Market Data Service  /v1/market/* → market-data-service:/ ───────────────
 router.use(
-  '/api/v1/market',
+  '/v1/market',
   createProxyMiddleware({
     target: config.services.marketData,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/market': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Portfolio Service ───
+// ─── Portfolio Service  /v1/portfolio/* → portfolio-service:/ ────────────────
 router.use(
-  '/api/v1/portfolio',
+  '/v1/portfolio',
   createProxyMiddleware({
     target: config.services.portfolio,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/portfolio': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Recommendation Service ───
+// ─── Recommendation Service  /v1/recommendations/* → recommendation-service:/
 router.use(
-  '/api/v1/recommendations',
+  '/v1/recommendations',
   createProxyMiddleware({
     target: config.services.recommendation,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/recommendations': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Alert Service ───
+// ─── Alert Service  /v1/alerts/* → alert-service:/ ───────────────────────────
 router.use(
-  '/api/v1/alerts',
+  '/v1/alerts',
   createProxyMiddleware({
     target: config.services.alert,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/alerts': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Notification Service ───
+// ─── Notification Service  /v1/notifications/* → notification-service:/ ──────
 router.use(
-  '/api/v1/notifications',
+  '/v1/notifications',
   createProxyMiddleware({
     target: config.services.notification,
     changeOrigin: true,
-    on: {
-      proxyReq: (proxyReq, req: Request) => {
-        if (req.user) {
-          proxyReq.setHeader('x-user-id', req.user.userId);
-        }
-        if (req.correlationId) {
-          proxyReq.setHeader('x-correlation-id', req.correlationId);
-        }
-      },
-    },
+    pathRewrite: { '^/v1/notifications': '' },
+    on: { proxyReq: makeProxyHandler() },
   })
 );
-
-// ─── Health Check ───
-router.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'api-gateway', timestamp: new Date().toISOString() });
-});
 
 export { router as proxyRoutes };

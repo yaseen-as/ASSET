@@ -20,7 +20,7 @@ export default function RegisterPage() {
       console.log('Phone number from registration:', phoneNumber);
       navigate('/verify-otp', { state: { userId, phone: phoneNumber } });
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Registration failed');
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Registration failed');
     }
   };
 

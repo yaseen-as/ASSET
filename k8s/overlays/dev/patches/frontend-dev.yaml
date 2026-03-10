@@ -32,5 +32,6 @@ spec:
       volumes:
         - name: source-code
           hostPath:
-            path: /home/ioss/Desktop/as/asset_management
+            # k3d mounts the host project root → /app inside every node
+            path: /app
             type: Directory

@@ -22,10 +22,10 @@ export default function VerifyOtpPage() {
     e.preventDefault();
     try {
       await verifyOtp(phone, otp);
-      toast.success('Account verified!');
-      navigate('/');
+      toast.success('Phone verified! Please sign in.');
+      navigate('/login');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Invalid OTP');
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Invalid OTP');
     }
   };
 

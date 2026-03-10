@@ -66,14 +66,8 @@ export const useAuthStore = create<AuthState>()(
       verifyOtp: async (phone, otp) => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/verify-otp', { phone, otp });
-          console.log('OTP verification response:', data.data);
-          set({
-            accessToken: data.data.accessToken,
-            refreshToken: data.data.refreshToken,
-            user: data.data.user,
-            isAuthenticated: true,
-          });
+          await api.post('/auth/verify-otp', { phone, otp });
+          // Server only confirms verification — tokens are issued on login
         } finally {
           set({ isLoading: false });
         }

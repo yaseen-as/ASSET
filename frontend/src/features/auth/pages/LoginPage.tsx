@@ -14,7 +14,11 @@ export default function LoginPage() {
       await login(email, password);
       toast.success('Welcome back!');
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Login failed');
+      toast.error(
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Login failed. Please check your credentials.'
+      );
     }
   };
 

@@ -16,10 +16,10 @@ declare global {
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
-  { method: 'POST', path: '/api/v1/auth/register' },
-  { method: 'POST', path: '/api/v1/auth/login' },
-  { method: 'POST', path: '/api/v1/auth/verify-otp' },
-  { method: 'POST', path: '/api/v1/auth/refresh' },
+  { method: 'POST', path: '/v1/auth/register' },
+  { method: 'POST', path: '/v1/auth/login' },
+  { method: 'POST', path: '/v1/auth/verify-otp' },
+  { method: 'POST', path: '/v1/auth/refresh' },
   { method: 'GET', path: '/health' },
 ];
 

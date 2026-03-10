@@ -13,7 +13,7 @@ const db: Knex = knex({
   searchPath: [config.database.schema, 'public'],
   pool: { min: 2, max: 10 },
   migrations: {
-    directory: '../../migrations',
+    directory: './migrations',
     schemaName: config.database.schema,
     tableName: 'knex_migrations',
   },

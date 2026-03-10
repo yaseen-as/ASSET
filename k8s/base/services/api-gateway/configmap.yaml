@@ -16,3 +16,5 @@ data:
   ALERT_SERVICE_URL: http://alert-service
   NOTIFICATION_SERVICE_URL: http://notification-service
   REDIS_URL: redis://redis-service:6379
+  # Must match auth-service JWT_SECRET
+  JWT_SECRET: dev-jwt-secret-change-this-in-production-min-32chars

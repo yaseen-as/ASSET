@@ -30,10 +30,11 @@ spec:
       containers:
         - name: app
           image: node:20-alpine
-          # workingDir is inherited from base (e.g. /app/services/auth-service)
-          # ts-node-dev watches src/ and restarts on every file change
+          # 1. Build @platform/shared (required by all services)
+          # 2. cd back to the service dir (workingDir set in base per-service)
+          # 3. Start ts-node-dev for hot-reload
           command: ["sh", "-c"]
-          args: ["npm run dev"]
+          args: ["rm -f /app/packages/shared/tsconfig.tsbuildinfo && (cd /app && npm run build --workspace=packages/shared) && npm run dev"]
           env:
             - name: NODE_ENV
               value: development
@@ -47,6 +48,7 @@ spec:
       volumes:
         - name: source-code
           hostPath:
-            # ⚠ Change this to match your local project root if different
-            path: /home/ioss/Desktop/as/asset_management
+            # k3d mounts the host project root → /app inside every node
+            # (configured in k3d-dev-config.yaml: volume host_path:/app@all)
+            path: /app
             type: Directory

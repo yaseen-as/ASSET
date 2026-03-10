@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/stores/auth.store';
 
 const api = axios.create({
-  baseURL: `http://localhost:3000/api/v1`,
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? `/api/v1`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000,
 });
@@ -16,11 +16,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → attempt silent refresh
+// Auth endpoints that must never trigger the silent-refresh flow
+const AUTH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/verify-otp', '/auth/refresh'];
+
+// Handle 401 on protected routes → attempt silent refresh
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) => original?.url?.includes(path));
+
+    // Don't intercept auth endpoints — let the caller handle the error directly
+    if (isAuthEndpoint) return Promise.reject(error);
+
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {

@@ -9,7 +9,7 @@ export const db = knex({
   },
   searchPath: [config.db.schema, 'public'],
   pool: { min: 2, max: 10 },
-  migrations: { directory: '../../migrations', schemaName: config.db.schema, tableName: 'knex_migrations' },
+  migrations: { directory: './migrations', schemaName: config.db.schema, tableName: 'knex_migrations' },
 });
 
 export async function initDatabase(): Promise<void> {
