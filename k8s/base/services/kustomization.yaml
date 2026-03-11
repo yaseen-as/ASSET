@@ -11,3 +11,10 @@ resources:
   - recommendation-service/
   - alert-service/
   - notification-service/
+
+# Wait for postgres before starting any backend service
+patches:
+  - path: wait-for-postgres.yaml
+    target:
+      kind: Deployment
+      labelSelector: "app.kubernetes.io/component=backend"

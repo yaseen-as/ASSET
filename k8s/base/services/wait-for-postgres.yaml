@@ -1,0 +1,25 @@
+# Strategic-merge patch — applied to every backend Deployment.
+# Adds an init container that blocks until PostgreSQL is accepting
+# connections, preventing ECONNREFUSED crashes on startup and
+# ensuring migrations run against a live database.
+# ─────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: placeholder
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL..."
+              until nc -z postgres-service.database.svc.cluster.local 5432; do
+                echo "postgres not ready — retrying in 2s"
+                sleep 2
+              done
+              echo "PostgreSQL is ready."
