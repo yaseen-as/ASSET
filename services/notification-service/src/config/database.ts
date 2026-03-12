@@ -19,4 +19,9 @@ const db: Knex = knex({
   },
 });
 
+export async function initDatabase(): Promise<void> {
+  await db.raw(`CREATE SCHEMA IF NOT EXISTS ${config.database.schema}`);
+  await db.migrate.latest();
+}
+
 export default db;

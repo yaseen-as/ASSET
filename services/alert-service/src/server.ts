@@ -1,19 +1,38 @@
 import app from './app';
 import { config } from './config';
+import { initDatabase } from './config/database';
 import { AlertService } from './services/alert.service';
 import { createLogger } from './utils/logger';
 
 const logger = createLogger('AlertServer');
 
-const alertService = new AlertService();
+async function start() {
+  try {
+    await initDatabase();
+    logger.info('Alert service DB initialized');
 
-app.listen(config.port, () => {
-  logger.info(`Alert service running on port ${config.port}`);
+    const alertService = new AlertService();
 
-  // Start the real-time alert evaluation engine
-  alertService.startEvaluation();
-  logger.info('Alert evaluation engine started');
-});
+    app.listen(config.port, () => {
+      logger.info(`Alert service running on port ${config.port}`);
+      alertService.startEvaluation();
+      logger.info('Alert evaluation engine started');
+    });
+
+    const shutdown = async () => {
+      logger.info('Shutting down alert service...');
+      await alertService.stop();
+      process.exit(0);
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+  } catch (error) {
+    logger.error('Failed to start alert service', { error });
+    process.exit(1);
+  }
+}
+
+start();
 
 // Graceful shutdown
 const shutdown = async () => {

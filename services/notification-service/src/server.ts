@@ -1,5 +1,6 @@
 import app from './app';
 import { config } from './config';
+import { initDatabase } from './config/database';
 import { NotificationService } from './services/notification.service';
 import { WsNotifier } from './services/ws-notifier';
 import { initController } from './controllers/notification.controller';
@@ -7,21 +8,36 @@ import { createLogger } from './utils/logger';
 
 const logger = createLogger('NotificationServer');
 
-// Initialise WebSocket notifier & notification service
-const wsNotifier = new WsNotifier();
-const notificationService = new NotificationService(wsNotifier);
+async function start() {
+  try {
+    await initDatabase();
+    logger.info('Notification service DB initialized');
 
-// Wire the service into controllers
-initController(notificationService);
+    const wsNotifier = new WsNotifier();
+    const notificationService = new NotificationService(wsNotifier);
+    initController(notificationService);
 
-app.listen(config.port, () => {
-  logger.info(`Notification service running on port ${config.port}`);
-  logger.info(`Notification WS server on port ${config.wsPort}`);
+    app.listen(config.port, () => {
+      logger.info(`Notification service running on port ${config.port}`);
+      logger.info(`Notification WS server on port ${config.wsPort}`);
+      notificationService.startListening();
+      logger.info('Event listener started');
+    });
 
-  // Start listening for events from other services
-  notificationService.startListening();
-  logger.info('Event listener started');
-});
+    const shutdown = async () => {
+      logger.info('Shutting down notification service...');
+      await notificationService.stop();
+      process.exit(0);
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+  } catch (error) {
+    logger.error('Failed to start notification service', { error });
+    process.exit(1);
+  }
+}
+
+start();
 
 // Graceful shutdown
 const shutdown = async () => {
