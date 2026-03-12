@@ -64,7 +64,7 @@ export default function AlertsPage() {
       setLabel('');
       fetchAlerts();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to create alert');
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create alert');
     }
   };
 

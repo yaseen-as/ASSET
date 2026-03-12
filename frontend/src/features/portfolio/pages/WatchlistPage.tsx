@@ -21,7 +21,7 @@ export default function WatchlistPage() {
       setSymbol('');
       toast.success(`${symbol.toUpperCase()} added to watchlist`);
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to add');
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to add');
     }
   };
 

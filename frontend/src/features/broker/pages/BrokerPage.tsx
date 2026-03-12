@@ -40,7 +40,7 @@ export default function BrokerPage() {
     e.preventDefault();
     try {
       await api.post('/broker/connect', {
-        broker: 'angel_one',
+        brokerName: 'angel_one',
         clientId,
         password,
         totp,
@@ -53,7 +53,7 @@ export default function BrokerPage() {
       setApiKey('');
       fetchConnections();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Connection failed');
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Connection failed');
     }
   };
 
