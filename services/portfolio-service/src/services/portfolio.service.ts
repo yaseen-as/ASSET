@@ -1,4 +1,6 @@
+import axios from 'axios';
 import { PortfolioRepository } from '../repositories/portfolio.repository';
+import { config } from '../config';
 import type { PortfolioSummary, Holding, Watchlist, CreateWatchlistDTO, UpdateWatchlistDTO } from '@platform/shared';
 
 export class PortfolioService {
@@ -32,6 +34,25 @@ export class PortfolioService {
       };
     });
 
+    // Refresh current prices from market-data-service
+    for (const h of holdings) {
+      try {
+        const { data } = await axios.get(
+          `${config.marketDataServiceUrl}/api/v1/market/quote/${h.exchange}/${h.symbol}`,
+          { timeout: 3000 },
+        );
+        if (data.data?.ltp) {
+          h.currentPrice = data.data.ltp;
+          h.pnl = Math.round((h.currentPrice - h.avgBuyPrice) * h.quantity * 100) / 100;
+          h.pnlPercentage = h.avgBuyPrice > 0
+            ? Math.round(((h.currentPrice - h.avgBuyPrice) / h.avgBuyPrice) * 10000) / 100
+            : 0;
+        }
+      } catch {
+        // Use cached price
+      }
+    }
+
     const totalValue = holdings.reduce((sum, h) => sum + h.currentPrice * h.quantity, 0);
     const totalInvested = holdings.reduce((sum, h) => sum + h.avgBuyPrice * h.quantity, 0);
     const totalPnl = totalValue - totalInvested;
@@ -46,10 +67,57 @@ export class PortfolioService {
     };
   }
 
-  async syncFromBroker(userId: string): Promise<void> {
-    // This would call Broker Service to get holdings and upsert them
-    // For now, it's a placeholder
-    console.log(`Syncing portfolio for user ${userId} from broker...`);
+  async syncFromBroker(userId: string): Promise<{ synced: number }> {
+    // 1. Get user's active broker connections
+    const { data: connResponse } = await axios.get(
+      `${config.brokerServiceUrl}/api/v1/broker/connections`,
+      { headers: { 'x-user-id': userId }, timeout: 5000 },
+    );
+
+    const connections = connResponse.data || [];
+    if (connections.length === 0) {
+      throw new Error('No broker connected. Connect a broker first.');
+    }
+
+    let totalSynced = 0;
+
+    for (const conn of connections) {
+      if (!conn.isActive && !conn.is_active) continue;
+
+      // 2. Fetch holdings from broker service
+      const { data: holdingsResponse } = await axios.get(
+        `${config.brokerServiceUrl}/api/v1/broker/holdings/${conn.id}`,
+        { headers: { 'x-user-id': userId }, timeout: 10000 },
+      );
+
+      const brokerHoldings = holdingsResponse.data || [];
+      if (brokerHoldings.length === 0) continue;
+
+      // 3. Get or create default portfolio
+      const portfolio = await this.repo.findOrCreateDefault(userId);
+
+      // 4. Map Angel One holdings → our schema and upsert
+      for (const h of brokerHoldings) {
+        const symbol = this.extractSymbol(h.tradingsymbol || h.symbol || '');
+        if (!symbol) continue;
+
+        await this.repo.upsertHolding(userId, portfolio.id, {
+          symbol,
+          exchange: h.exchange || 'NSE',
+          quantity: parseInt(h.quantity || h.t1quantity || '0', 10),
+          avgBuyPrice: parseFloat(h.averageprice || h.avgBuyPrice || '0'),
+          currentPrice: parseFloat(h.ltp || h.close || h.averageprice || '0'),
+        });
+        totalSynced++;
+      }
+    }
+
+    return { synced: totalSynced };
+  }
+
+  private extractSymbol(tradingSymbol: string): string {
+    // Angel One format: "RELIANCE-EQ" → "RELIANCE"
+    return tradingSymbol.replace(/-EQ$/i, '').trim();
   }
 
   async getWatchlists(userId: string): Promise<Watchlist[]> {

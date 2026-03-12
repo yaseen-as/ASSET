@@ -33,13 +33,3 @@ async function start() {
 }
 
 start();
-
-// Graceful shutdown
-const shutdown = async () => {
-  logger.info('Shutting down alert service...');
-  await alertService.stop();
-  process.exit(0);
-};
-
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);

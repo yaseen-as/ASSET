@@ -12,5 +12,6 @@ export const config = {
     password: process.env.DB_PASSWORD || 'postgres',
     schema: process.env.DB_SCHEMA || 'portfolio',
   },
-  brokerServiceUrl: process.env.BROKER_SERVICE_URL || 'http://localhost:3003',
+  brokerServiceUrl: process.env.BROKER_SERVICE_URL || 'http://broker-service',
+  marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://market-data-service',
 };

@@ -12,7 +12,8 @@ export const config = {
     password: process.env.DB_PASSWORD || 'postgres',
     schema: process.env.DB_SCHEMA || 'recommendations',
   },
-  marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',
+  marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://market-data-service',
+  trackedSymbols: (process.env.TRACKED_SYMBOLS || 'RELIANCE,INFY,SBIN,TCS,HDFCBANK').split(','),
   signalWeights: {
     ruleEngine: parseFloat(process.env.WEIGHT_RULE_ENGINE || '0.4'),
     mlModel: parseFloat(process.env.WEIGHT_ML_MODEL || '0.4'),
