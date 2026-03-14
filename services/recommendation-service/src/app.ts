@@ -17,7 +17,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'recommendation-service', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/recommendations', recommendationRoutes);
+app.use('', recommendationRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Recommendation service error:', err);
