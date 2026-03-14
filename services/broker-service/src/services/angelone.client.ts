@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 
 /**
  * Angel One SmartAPI Client
@@ -15,6 +16,9 @@ export class AngelOneClient {
     feedToken: string;
   }> {
     try {
+      logger.info(`ANGEL ONE LOGIN: Attempting login for clientId: %s`, clientId);
+      logger.info(`ANGEL ONE LOGIN: API URL: %s`, this.baseUrl);
+      logger.info(`ANGEL ONE LOGIN: API Key present: %s`, this.apiKey);
       const response = await axios.post(`${this.baseUrl}/rest/auth/angelbroking/user/v1/loginByPassword`, {
         clientcode: clientId,
         password,
@@ -31,7 +35,7 @@ export class AngelOneClient {
           'X-PrivateKey': this.apiKey,
         },
       });
-
+      logger.debug(`ANGEL ONE LOGIN: Response data: ${JSON.stringify(response.data)}`);
       if (!response.data?.data?.jwtToken) {
         throw new Error(response.data?.message || 'Login failed');
       }

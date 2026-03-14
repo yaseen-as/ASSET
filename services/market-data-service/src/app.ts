@@ -18,7 +18,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'market-data-service', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/market', marketRoutes);
+app.use('', marketRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Market data service error:', err);

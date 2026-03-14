@@ -19,7 +19,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'broker-service', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/broker', brokerRoutes);
+app.use('', brokerRoutes);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

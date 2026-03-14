@@ -17,6 +17,6 @@ export const config = {
   },
   angelOne: {
     apiKey: process.env.ANGEL_ONE_API_KEY || '',
-    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelbroking.com',
+    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelone.in/rest',
   },
 };

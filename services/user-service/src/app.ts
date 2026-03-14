@@ -18,7 +18,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'user-service', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/users', userRoutes);
+app.use('', userRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('User service error:', err);
