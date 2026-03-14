@@ -20,7 +20,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Routes
-app.use('/api/v1/notifications', notificationRoutes);
+app.use('', notificationRoutes);
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

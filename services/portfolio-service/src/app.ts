@@ -17,7 +17,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'portfolio-service', timestamp: new Date().toISOString() });
 });
 
-app.use('/api/v1/portfolio', portfolioRoutes);
+app.use('', portfolioRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Portfolio service error:', err);

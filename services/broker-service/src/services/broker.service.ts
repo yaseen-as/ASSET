@@ -7,6 +7,7 @@ import { PaperTradingService, type PaperBalance } from './paper-trading.service'
 import { encrypt, decrypt } from '../utils/encryption';
 import { config } from '../config';
 import type { BrokerConnection, ConnectBrokerDTO, PlaceOrderDTO, OrderResponse } from '@platform/shared';
+import { logger } from '../utils/logger';
 
 export class BrokerService {
   private repo = new BrokerConnectionRepository();
@@ -24,8 +25,8 @@ export class BrokerService {
 
     // Login to broker
     const tokens = await this.angelOne.login(dto.clientId, dto.password, dto.totp);
-
-    // Store encrypted tokens (including feedToken for real-time market data)
+    logger.info(`tockens: ${JSON.stringify(tokens)}`);
+    // Store encrypted tokens
     const row = await this.repo.create({
       user_id: userId,
       broker_name: dto.brokerName,
