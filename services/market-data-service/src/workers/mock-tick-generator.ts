@@ -123,7 +123,7 @@ export class MockTickGenerator {
       state.lowPrice = Math.min(state.lowPrice, newPrice);
       state.volume += Math.floor(Math.random() * 10000);
 
-      const tick: WSTickData = {
+      const tick: WSTickData & { openPrice: number; highPrice: number; lowPrice: number } = {
         symbol: state.symbol,
         exchange: 'NSE',
         ltp: newPrice,
@@ -131,10 +131,20 @@ export class MockTickGenerator {
         changePercent,
         volume: state.volume,
         timestamp: Date.now(),
+        openPrice: state.openPrice,
+        highPrice: state.highPrice,
+        lowPrice: state.lowPrice,
       };
 
       const channel = `market:tick:${tick.exchange}:${tick.symbol}`;
-      await this.redisPub.publish(channel, JSON.stringify(tick));
+      const cacheKey = `market:tick:cache:${tick.exchange}:${tick.symbol}`;
+      const payload = JSON.stringify(tick);
+
+      // Cache tick for REST API getQuote() and publish for WebSocket subscribers
+      await Promise.all([
+        this.redisPub.set(cacheKey, payload, 'EX', 60), // TTL 60s
+        this.redisPub.publish(channel, payload),
+      ]);
     }
   }
 

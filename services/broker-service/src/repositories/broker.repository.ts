@@ -7,6 +7,7 @@ export interface ConnectionRow {
   client_id: string;
   access_token: string | null;
   refresh_token: string | null;
+  feed_token: string | null;
   token_expiry: Date | null;
   is_active: boolean;
   connected_at: Date;

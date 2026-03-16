@@ -51,4 +51,19 @@ export class BrokerController {
       res.json({ success: true, data: holdings });
     } catch (error) { next(error); }
   }
+
+  static async getFeedTokens(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.headers['x-user-id'] as string;
+      const tokens = await brokerService.getFeedTokens(userId);
+      res.json({ success: true, data: tokens });
+    } catch (error) { next(error); }
+  }
+
+  static async getActiveFeedTokens(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const tokens = await brokerService.getActiveFeedTokens();
+      res.json({ success: true, data: tokens });
+    } catch (error) { next(error); }
+  }
 }
