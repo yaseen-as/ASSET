@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   X,
+  Activity,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/market', label: 'Market', icon: Activity },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { to: '/watchlist', label: 'Watchlist', icon: Eye },
   { to: '/alerts', label: 'Alerts', icon: Bell },

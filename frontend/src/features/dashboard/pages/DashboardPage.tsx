@@ -1,32 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { usePortfolioStore } from '@/stores/portfolio.store';
 import { useNotificationStore } from '@/stores/notification.store';
-import { formatINR, formatPercent, formatCompact } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Briefcase, Bell } from 'lucide-react';
-import api from '@/lib/api';
+import { useMarketTicks } from '@/hooks/useMarketTicks';
+import { formatINR, formatPercent } from '@/lib/utils';
+import { TrendingUp, TrendingDown, Briefcase, Bell, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
-interface MarketIndex {
-  name: string;
-  value: number;
-  change: number;
-  changePct: number;
-}
+// Top 5 symbols to show in the dashboard ticker
+const DASHBOARD_SYMBOLS = [
+  'NSE:RELIANCE',
+  'NSE:INFY',
+  'NSE:TCS',
+  'NSE:HDFCBANK',
+  'NSE:SBIN',
+];
 
 export default function DashboardPage() {
   const { holdings, totalValue, totalPnl, fetchHoldings, isLoading } = usePortfolioStore();
   const { unreadCount, fetch: fetchNotifications } = useNotificationStore();
-  const [indices, setIndices] = useState<MarketIndex[]>([]);
+  const { ticks } = useMarketTicks(DASHBOARD_SYMBOLS);
 
   useEffect(() => {
     fetchHoldings();
     fetchNotifications();
-
-    // Fetch market indices (mock data for now)
-    setIndices([
-      { name: 'NIFTY 50', value: 23450.5, change: 125.3, changePct: 0.54 },
-      { name: 'SENSEX', value: 77230.8, change: 410.2, changePct: 0.53 },
-      { name: 'BANK NIFTY', value: 49780.0, change: -85.4, changePct: -0.17 },
-    ]);
   }, []);
 
   const totalPnlPct = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
@@ -35,18 +32,40 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
-      {/* Market Indices */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {indices.map((idx) => (
-          <div key={idx.name} className="card">
-            <p className="text-sm text-gray-400">{idx.name}</p>
-            <p className="mt-1 text-2xl font-bold">{idx.value.toLocaleString('en-IN')}</p>
-            <p className={`mt-1 flex items-center gap-1 text-sm ${idx.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {idx.change >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              {idx.change >= 0 ? '+' : ''}{idx.change.toFixed(1)} ({formatPercent(idx.changePct)})
-            </p>
-          </div>
-        ))}
+      {/* Live market mini-ticker */}
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {DASHBOARD_SYMBOLS.map((sym) => {
+          const tick = ticks[sym];
+          const symbol = sym.split(':')[1];
+          const isUp = (tick?.changePercent ?? 0) >= 0;
+          return (
+            <Link
+              key={sym}
+              to="/market"
+              className="card flex min-w-[140px] flex-col gap-0.5 p-3 transition-colors hover:border-gray-700 shrink-0"
+            >
+              <span className="text-xs font-semibold text-gray-300">{symbol}</span>
+              {tick ? (
+                <>
+                  <span className="font-mono text-sm font-bold">{formatINR(tick.ltp)}</span>
+                  <span className={cn('flex items-center gap-0.5 text-xs', isUp ? 'text-green-400' : 'text-red-400')}>
+                    {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {formatPercent(tick.changePercent)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-xs text-gray-600">Loading…</span>
+              )}
+            </Link>
+          );
+        })}
+        <Link
+          to="/market"
+          className="card flex min-w-[100px] shrink-0 items-center justify-center gap-1 p-3 text-xs text-gray-500 transition-colors hover:border-gray-700 hover:text-gray-300"
+        >
+          <Activity className="h-4 w-4" />
+          View All
+        </Link>
       </div>
 
       {/* Portfolio Summary */}
@@ -88,11 +107,21 @@ export default function DashboardPage() {
 
       {/* Top Holdings */}
       <div className="card">
-        <h2 className="mb-4 text-lg font-semibold">Top Holdings</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Top Holdings</h2>
+          <Link to="/portfolio" className="text-sm text-brand-400 hover:text-brand-300">
+            View all →
+          </Link>
+        </div>
         {isLoading ? (
           <p className="text-gray-500">Loading…</p>
         ) : holdings.length === 0 ? (
-          <p className="text-gray-500">No holdings yet. Connect your broker to sync.</p>
+          <div className="space-y-2 py-4 text-center text-gray-500">
+            <p>No holdings yet. Connect your broker to sync.</p>
+            <Link to="/broker" className="text-sm text-brand-400 hover:text-brand-300">
+              Connect broker →
+            </Link>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -107,20 +136,31 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {holdings.slice(0, 10).map((h) => (
-                  <tr key={h.symbol} className="border-b border-gray-800/50">
-                    <td className="py-2 font-medium">{h.symbol}</td>
-                    <td className="py-2 text-right">{h.quantity}</td>
-                    <td className="py-2 text-right">{formatINR(h.avgPrice)}</td>
-                    <td className="py-2 text-right">{formatINR(h.currentPrice)}</td>
-                    <td className={`py-2 text-right font-medium ${h.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatINR(h.pnl)}
-                    </td>
-                    <td className={`py-2 text-right ${h.pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatPercent(h.pnlPercent)}
-                    </td>
-                  </tr>
-                ))}
+                {holdings.slice(0, 10).map((h) => {
+                  // Use live tick if available, otherwise fall back to stored price
+                  const liveTick = ticks[`${h.exchange}:${h.symbol}`];
+                  const ltp = liveTick?.ltp ?? h.currentPrice;
+                  const livePnl = (ltp - h.avgPrice) * h.quantity;
+                  const livePnlPct = h.avgPrice > 0 ? ((ltp - h.avgPrice) / h.avgPrice) * 100 : 0;
+
+                  return (
+                    <tr key={`${h.exchange}-${h.symbol}`} className="border-b border-gray-800/50 hover:bg-gray-800/30">
+                      <td className="py-2 font-medium">
+                        {h.symbol}
+                        <span className="ml-1.5 text-xs text-gray-500">{h.exchange}</span>
+                      </td>
+                      <td className="py-2 text-right">{h.quantity}</td>
+                      <td className="py-2 text-right">{formatINR(h.avgPrice)}</td>
+                      <td className="py-2 text-right font-mono">{formatINR(ltp)}</td>
+                      <td className={`py-2 text-right font-medium ${livePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatINR(livePnl)}
+                      </td>
+                      <td className={`py-2 text-right ${livePnlPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatPercent(livePnlPct)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
