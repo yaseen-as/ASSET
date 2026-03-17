@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
-import { Lightbulb, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { Lightbulb, TrendingUp, TrendingDown, RefreshCw, ShoppingCart } from 'lucide-react';
 
 // Normalized signal shape used by this page
 interface Signal {
@@ -42,6 +43,7 @@ const actionBg = {
 };
 
 export default function RecommendationsPage() {
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [tab, setTab] = useState<'personalized' | 'all'>('personalized');
@@ -162,6 +164,16 @@ export default function RecommendationsPage() {
                     : ''}
                 </span>
               </div>
+
+              {s.signalType !== 'HOLD' && (
+                <button
+                  onClick={() => navigate(`/orders?symbol=${s.symbol}&exchange=${s.exchange}&action=${s.signalType}`)}
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600/20 px-3 py-2 text-sm font-medium text-brand-400 hover:bg-brand-600/30 transition-colors"
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  Trade {s.symbol}
+                </button>
+              )}
             </div>
           ))}
         </div>

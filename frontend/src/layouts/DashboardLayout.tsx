@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Activity,
+  ShoppingCart,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/watchlist', label: 'Watchlist', icon: Eye },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/recommendations', label: 'Signals', icon: Lightbulb },
+  { to: '/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/broker', label: 'Broker', icon: Link2 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

@@ -89,6 +89,33 @@ export class AngelOneClient {
     }
   }
 
+  async getOrderBook(accessToken: string): Promise<any[]> {
+    try {
+      const response = await axios.get(
+        `${this.baseUrl}/rest/secure/angelbroking/order/v1/getOrderBook`,
+        { headers: this.getAuthHeaders(accessToken) }
+      );
+      return response.data?.data || [];
+    } catch (error: unknown) {
+      const axiosErr = error as { message?: string };
+      throw new Error(`Failed to fetch order book: ${axiosErr.message}`);
+    }
+  }
+
+  async cancelOrder(accessToken: string, variety: string, orderId: string): Promise<{ orderId: string }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/rest/secure/angelbroking/order/v1/cancelOrder`,
+        { variety, orderid: orderId },
+        { headers: this.getAuthHeaders(accessToken) }
+      );
+      return { orderId: response.data?.data?.orderid || orderId };
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string } }; message?: string };
+      throw new Error(`Cancel order failed: ${axiosErr.response?.data?.message || axiosErr.message}`);
+    }
+  }
+
   async refreshSession(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const response = await axios.post(
