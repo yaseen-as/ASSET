@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import api from '@/lib/api';
+import { formatINR } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -12,6 +13,11 @@ export default function SettingsPage() {
   const [emailOrders, setEmailOrders] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
 
+  // Paper trading
+  const [paperTrading, setPaperTrading] = useState(false);
+  const [paperBalance, setPaperBalance] = useState<{ cash: number; invested: number; totalValue: number } | null>(null);
+  const [resetting, setResetting] = useState(false);
+
   useEffect(() => {
     api.get('/notifications/preferences').then(({ data }) => {
       const p = data.data;
@@ -22,7 +28,23 @@ export default function SettingsPage() {
         setPushEnabled(p.push_enabled);
       }
     }).catch(() => {});
+
+    api.get('/users/profile').then(({ data }) => {
+      const p = data.data;
+      if (p) {
+        setPaperTrading(p.paperTrading ?? p.paper_trading ?? false);
+      }
+    }).catch(() => {});
+
+    loadPaperBalance();
   }, []);
+
+  const loadPaperBalance = async () => {
+    try {
+      const { data } = await api.get('/broker/paper/balance');
+      setPaperBalance(data.data);
+    } catch { /* ignore */ }
+  };
 
   const savePreferences = async () => {
     try {
@@ -35,6 +57,31 @@ export default function SettingsPage() {
       toast.success('Preferences saved');
     } catch {
       toast.error('Failed to save');
+    }
+  };
+
+  const togglePaperTrading = async () => {
+    const newValue = !paperTrading;
+    try {
+      await api.patch('/users/profile', { paperTrading: newValue });
+      setPaperTrading(newValue);
+      toast.success(newValue ? 'Paper trading enabled' : 'Live trading enabled');
+      if (newValue) loadPaperBalance();
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
+  const resetPaperAccount = async () => {
+    setResetting(true);
+    try {
+      await api.post('/broker/paper/reset');
+      toast.success('Paper account reset');
+      loadPaperBalance();
+    } catch {
+      toast.error('Failed to reset');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -55,6 +102,69 @@ export default function SettingsPage() {
             <input className="input" value={user?.email || ''} readOnly />
           </div>
         </div>
+      </div>
+
+      {/* Trading Mode */}
+      <div className="card space-y-4">
+        <h2 className="text-lg font-semibold">Trading Mode</h2>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">{paperTrading ? 'Paper Trading' : 'Live Trading'}</p>
+            <p className="text-sm text-gray-500">
+              {paperTrading
+                ? 'Orders are simulated — no real money is used.'
+                : 'Orders are sent to your connected broker.'}
+            </p>
+          </div>
+          <button
+            onClick={togglePaperTrading}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+              paperTrading ? 'bg-yellow-600' : 'bg-green-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                paperTrading ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+
+        {paperTrading && (
+          <>
+            {!paperTrading ? null : (
+              <div className="rounded-lg border border-yellow-800/50 bg-yellow-900/20 p-3 text-sm text-yellow-400">
+                Paper trading mode is active. All orders will be simulated at current market prices.
+              </div>
+            )}
+
+            {paperBalance && (
+              <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                <div>
+                  <p className="text-gray-500">Cash</p>
+                  <p className="font-bold text-green-400">{formatINR(paperBalance.cash)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Invested</p>
+                  <p className="font-bold">{formatINR(paperBalance.invested)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Total Value</p>
+                  <p className="font-bold text-brand-400">{formatINR(paperBalance.totalValue)}</p>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={resetPaperAccount}
+              disabled={resetting}
+              className="btn-secondary text-sm"
+            >
+              {resetting ? 'Resetting...' : 'Reset Paper Account'}
+            </button>
+          </>
+        )}
       </div>
 
       {/* Notification Preferences */}

@@ -17,6 +17,7 @@ import WatchlistPage from '@/features/portfolio/pages/WatchlistPage';
 import AlertsPage from '@/features/alerts/pages/AlertsPage';
 import RecommendationsPage from '@/features/recommendations/pages/RecommendationsPage';
 import MarketPage from '@/features/market/pages/MarketPage';
+import OrderPage from '@/features/orders/pages/OrderPage';
 import BrokerPage from '@/features/broker/pages/BrokerPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
 
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
+        <Route path="/orders" element={<OrderPage />} />
         <Route path="/broker" element={<BrokerPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>

@@ -12,11 +12,17 @@ export const config = {
     password: process.env.DB_PASSWORD || 'postgres',
     schema: process.env.DB_SCHEMA || 'broker',
   },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+  },
   encryption: {
     key: process.env.BROKER_TOKEN_ENCRYPTION_KEY || '',
   },
   angelOne: {
     apiKey: process.env.ANGEL_ONE_API_KEY || '',
-    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelone.in/rest',
+    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelbroking.com',
+    scripMasterUrl: process.env.ANGEL_SCRIP_MASTER_URL || 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json',
   },
+  userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:3002',
+  marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',
 };
