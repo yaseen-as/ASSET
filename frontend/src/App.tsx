@@ -16,6 +16,7 @@ import PortfolioPage from '@/features/portfolio/pages/PortfolioPage';
 import WatchlistPage from '@/features/portfolio/pages/WatchlistPage';
 import AlertsPage from '@/features/alerts/pages/AlertsPage';
 import RecommendationsPage from '@/features/recommendations/pages/RecommendationsPage';
+import MarketPage from '@/features/market/pages/MarketPage';
 import BrokerPage from '@/features/broker/pages/BrokerPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
 
@@ -44,6 +45,7 @@ export default function App() {
       {/* Protected dashboard routes */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/market" element={<MarketPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/alerts" element={<AlertsPage />} />

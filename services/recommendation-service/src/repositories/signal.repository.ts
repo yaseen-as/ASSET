@@ -73,4 +73,39 @@ export class SignalRepository {
       .returning('*');
     return row;
   }
+
+  async findRecent(symbol: string, exchange: string, ruleName: string, hoursAgo: number) {
+    const cutoff = new Date(Date.now() - hoursAgo * 3600000);
+    return db(this.table)
+      .where({ symbol, exchange })
+      .andWhereRaw("metadata->>'ruleName' = ?", [ruleName])
+      .andWhere('created_at', '>', cutoff)
+      .first();
+  }
+
+  async findBySymbols(symbols: string[], limit = 50) {
+    return db(this.table)
+      .whereIn('symbol', symbols)
+      .andWhere('valid_until', '>', new Date())
+      .orderBy('created_at', 'desc')
+      .limit(limit);
+  }
+
+  async hasUserRecommendation(userId: string, signalId: string): Promise<boolean> {
+    const row = await db(this.userRecsTable)
+      .where({ user_id: userId, signal_id: signalId })
+      .first();
+    return !!row;
+  }
+
+  async deleteExpired(): Promise<number> {
+    return db(this.table)
+      .where('valid_until', '<', new Date())
+      .del();
+  }
+
+  async getLatestSignalDate(): Promise<string | null> {
+    const row = await db(this.table).orderBy('created_at', 'desc').first();
+    return row ? (row.created_at as Date).toISOString() : null;
+  }
 }
