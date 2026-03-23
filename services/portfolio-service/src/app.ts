@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { portfolioRoutes } from './routes/portfolio.routes';
+import { analyticsRoutes } from './routes/analytics.routes';
 import { createLogger } from './utils/logger';
 import { requestLogger } from './middleware/request-logger';
 
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/v1/portfolio', portfolioRoutes);
+app.use('/api/v1/portfolio/analytics', analyticsRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Portfolio service error:', err);
