@@ -16,6 +16,7 @@ export const config = {
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
+  brokerServiceUrl: process.env.BROKER_SERVICE_URL || 'http://broker-service',
   mockTicks: process.env.MOCK_TICKS === 'true',
   trackedSymbols: (process.env.TRACKED_SYMBOLS || 'RELIANCE,INFY,SBIN,TCS,HDFCBANK').split(','),
   mockTickIntervalMs: parseInt(process.env.MOCK_TICK_INTERVAL_MS || '3000', 10),

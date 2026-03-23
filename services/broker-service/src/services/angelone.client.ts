@@ -120,6 +120,59 @@ export class AngelOneClient {
     }
   }
 
+  /**
+   * Fetch real-time LTP / OHLC from Angel One Market Data API.
+   * mode: "LTP" | "OHLC" | "FULL"
+   */
+  async getMarketQuote(
+    accessToken: string,
+    exchange: string,
+    symbolToken: string,
+    mode: 'LTP' | 'OHLC' | 'FULL' = 'FULL',
+  ): Promise<{
+    ltp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/rest/secure/angelbroking/market/v1/quote`,
+        {
+          mode,
+          exchangeTokens: { [exchange]: [symbolToken] },
+        },
+        { headers: this.getAuthHeaders(accessToken), timeout: 5000 },
+      );
+
+      const data = response.data?.data;
+      if (!data) {
+        throw new Error(response.data?.message || 'No quote data returned');
+      }
+
+      // Response shape: { "fetched": [...], "unfetched": [...] }
+      const fetched = data.fetched || [];
+      if (fetched.length === 0) {
+        throw new Error('Symbol not found in market data');
+      }
+
+      const quote = fetched[0];
+      return {
+        ltp: parseFloat(quote.ltp || '0'),
+        open: parseFloat(quote.open || quote.ltp || '0'),
+        high: parseFloat(quote.high || quote.ltp || '0'),
+        low: parseFloat(quote.low || quote.ltp || '0'),
+        close: parseFloat(quote.close || quote.ltp || '0'),
+        volume: parseInt(quote.tradeVolume || quote.totBuyQuan || '0', 10),
+      };
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string } }; message?: string };
+      throw new Error(`Market quote failed: ${axiosErr.response?.data?.message || axiosErr.message}`);
+    }
+  }
+
   async refreshSession(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const response = await axios.post(

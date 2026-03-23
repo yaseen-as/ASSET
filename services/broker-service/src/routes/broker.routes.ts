@@ -3,8 +3,12 @@ import { BrokerController } from '../controllers/broker.controller';
 import { OrderController } from '../controllers/order.controller';
 import { SymbolController } from '../controllers/symbol.controller';
 import { PaperController } from '../controllers/paper.controller';
+import { MarketController } from '../controllers/market.controller';
 
 const router = Router();
+
+// ─── Real-time market data (Angel One) ──────────────────────────────────────
+router.get('/market/quote/:exchange/:symbol', MarketController.getQuote);
 
 // ─── Broker connection management ────────────────────────────────────────────
 router.post('/connect', BrokerController.connect);

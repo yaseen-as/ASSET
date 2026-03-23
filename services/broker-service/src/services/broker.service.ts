@@ -215,6 +215,27 @@ export class BrokerService {
     return this.angelOne.getHoldings(accessToken);
   }
 
+  // ─── Market quote (real-time via Angel One) ──────────────────────────────────
+  async getQuote(exchange: string, symbol: string): Promise<{
+    ltp: number; open: number; high: number; low: number; close: number; volume: number;
+  }> {
+    // Get any active connection with a valid access token
+    const activeConns = await this.repo.findActiveConnections();
+    const conn = activeConns.find(c => c.access_token);
+    if (!conn || !conn.access_token) {
+      throw new ServiceError('No active broker connection available for market data', 'NO_SESSION', 401);
+    }
+
+    // Resolve symbol token
+    const symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
+    if (!symbolInfo) {
+      throw new ServiceError(`Symbol ${exchange}:${symbol} not found in master`, 'SYMBOL_NOT_FOUND', 404);
+    }
+
+    const accessToken = decrypt(conn.access_token);
+    return this.angelOne.getMarketQuote(accessToken, exchange, symbolInfo.token, 'FULL');
+  }
+
   // Symbol master delegations
   async searchSymbols(query: string, exchange?: string, limit?: number) {
     return this.symbolMaster.searchSymbols(query, exchange, limit);
