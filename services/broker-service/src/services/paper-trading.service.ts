@@ -152,6 +152,66 @@ export class PaperTradingService {
     };
   }
 
+  async getPositions(userId: string): Promise<{
+    symbol: string;
+    exchange: string;
+    quantity: number;
+    avgBuyPrice: number;
+    currentPrice: number;
+    investedValue: number;
+    currentValue: number;
+    pnl: number;
+    pnlPercent: number;
+  }[]> {
+    const orders = await this.orderRepo.findByUserIdFiltered(userId, { source: 'paper', status: 'EXECUTED' }, 1000, 0);
+
+    // Aggregate positions
+    const positions = new Map<string, { qty: number; totalCost: number; exchange: string; symbol: string }>();
+    for (const o of orders) {
+      const key = `${o.exchange}:${o.symbol}`;
+      const pos = positions.get(key) || { qty: 0, totalCost: 0, exchange: o.exchange, symbol: o.symbol };
+      const fillPrice = o.avg_fill_price || o.price || 0;
+      if (o.action === 'BUY') {
+        pos.totalCost += o.filled_quantity * fillPrice;
+        pos.qty += o.filled_quantity;
+      } else {
+        pos.totalCost -= o.filled_quantity * fillPrice;
+        pos.qty -= o.filled_quantity;
+      }
+      positions.set(key, pos);
+    }
+
+    // Filter open positions and fetch current prices
+    const result = [];
+    for (const [, pos] of positions) {
+      if (pos.qty <= 0) continue;
+      const avgBuyPrice = pos.totalCost / pos.qty;
+      let currentPrice = avgBuyPrice;
+      try {
+        currentPrice = await this.getCurrentPrice(pos.exchange, pos.symbol);
+      } catch { /* use avg as fallback */ }
+
+      const investedValue = avgBuyPrice * pos.qty;
+      const currentValue = currentPrice * pos.qty;
+      const pnl = currentValue - investedValue;
+      const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
+
+      result.push({
+        symbol: pos.symbol,
+        exchange: pos.exchange,
+        quantity: pos.qty,
+        avgBuyPrice: Math.round(avgBuyPrice * 100) / 100,
+        currentPrice: Math.round(currentPrice * 100) / 100,
+        investedValue: Math.round(investedValue * 100) / 100,
+        currentValue: Math.round(currentValue * 100) / 100,
+        pnl: Math.round(pnl * 100) / 100,
+        pnlPercent: Math.round(pnlPercent * 100) / 100,
+      });
+    }
+
+    return result.sort((a, b) => Math.abs(b.currentValue) - Math.abs(a.currentValue));
+  }
+
   async resetAccount(userId: string): Promise<void> {
     // Delete all paper orders
     await this.orderRepo.deleteByUserAndSource(userId, 'paper');

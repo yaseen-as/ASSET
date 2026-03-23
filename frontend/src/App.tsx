@@ -18,6 +18,7 @@ import AlertsPage from '@/features/alerts/pages/AlertsPage';
 import RecommendationsPage from '@/features/recommendations/pages/RecommendationsPage';
 import MarketPage from '@/features/market/pages/MarketPage';
 import OrderPage from '@/features/orders/pages/OrderPage';
+import PaperTradingPage from '@/features/paper-trading/pages/PaperTradingPage';
 import AnalyticsPage from '@/features/analytics/pages/AnalyticsPage';
 import BrokerPage from '@/features/broker/pages/BrokerPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/orders" element={<OrderPage />} />
+        <Route path="/paper-trading" element={<PaperTradingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/broker" element={<BrokerPage />} />
         <Route path="/settings" element={<SettingsPage />} />

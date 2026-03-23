@@ -33,6 +33,7 @@ router.post('/symbols/sync', SymbolController.syncMaster);
 
 // ─── Paper trading ───────────────────────────────────────────────────────────
 router.get('/paper/balance', PaperController.getBalance);
+router.get('/paper/positions', PaperController.getPositions);
 router.post('/paper/reset', PaperController.reset);
 
 export { router as brokerRoutes };

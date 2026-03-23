@@ -254,6 +254,10 @@ export class BrokerService {
     return this.paperTrading.getBalance(userId);
   }
 
+  async getPaperPositions(userId: string) {
+    return this.paperTrading.getPositions(userId);
+  }
+
   async resetPaperAccount(userId: string) {
     return this.paperTrading.resetAccount(userId);
   }

@@ -13,6 +13,7 @@ import {
   Activity,
   ShoppingCart,
   BarChart3,
+  FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
@@ -27,6 +28,7 @@ const navItems = [
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/recommendations', label: 'Signals', icon: Lightbulb },
   { to: '/orders', label: 'Orders', icon: ShoppingCart },
+  { to: '/paper-trading', label: 'Paper Trading', icon: FileText },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/broker', label: 'Broker', icon: Link2 },
   { to: '/settings', label: 'Settings', icon: Settings },

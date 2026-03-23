@@ -12,6 +12,14 @@ export class PaperController {
     } catch (error) { next(error); }
   }
 
+  static async getPositions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.headers['x-user-id'] as string;
+      const positions = await brokerService.getPaperPositions(userId);
+      res.json({ success: true, data: positions });
+    } catch (error) { next(error); }
+  }
+
   static async reset(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.headers['x-user-id'] as string;
