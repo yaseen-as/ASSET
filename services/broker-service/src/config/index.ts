@@ -20,7 +20,8 @@ export const config = {
   },
   angelOne: {
     apiKey: process.env.ANGEL_ONE_API_KEY || '',
-    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelone.in/rest',
+    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelone.in',
+    scripMasterUrl: process.env.ANGEL_ONE_SCRIP_MASTER_URL || 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json',
   },
   userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:3002',
   marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',

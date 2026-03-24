@@ -49,7 +49,7 @@ export class MarketDataService {
     // 3. Fetch real-time quote from broker-service (Angel One Smart API)
     try {
       const { data } = await axios.get(
-        `${config.brokerServiceUrl}/api/v1/broker/market/quote/${exchange}/${symbol}`,
+        `${config.brokerServiceUrl}/market/quote/${exchange}/${symbol}`,
         { timeout: 8000 },
       );
 

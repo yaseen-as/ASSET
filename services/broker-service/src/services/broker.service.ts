@@ -226,14 +226,47 @@ export class BrokerService {
       throw new ServiceError('No active broker connection available for market data', 'NO_SESSION', 401);
     }
 
-    // Resolve symbol token
-    const symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
+    // Auto-sync symbol master if empty/stale
+    let symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
     if (!symbolInfo) {
-      throw new ServiceError(`Symbol ${exchange}:${symbol} not found in master`, 'SYMBOL_NOT_FOUND', 404);
+      const isStale = await this.symbolMaster.isStale();
+      if (isStale) {
+        logger.info(`Symbol ${exchange}:${symbol} not found, triggering symbol master sync...`);
+        try {
+          await this.symbolMaster.fetchAndSync();
+          symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
+        } catch (syncErr: any) {
+          logger.error(`Symbol master sync failed: ${syncErr.message}`);
+        }
+      }
+      if (!symbolInfo) {
+        throw new ServiceError(`Symbol ${exchange}:${symbol} not found in master. Try syncing symbol master.`, 'SYMBOL_NOT_FOUND', 404);
+      }
     }
 
-    const accessToken = decrypt(conn.access_token);
-    return this.angelOne.getMarketQuote(accessToken, exchange, symbolInfo.token, 'FULL');
+    let accessToken = decrypt(conn.access_token);
+
+    try {
+      return await this.angelOne.getMarketQuote(accessToken, exchange, symbolInfo.token, 'FULL');
+    } catch (err: any) {
+      // If auth failed (token expired), try refreshing the session
+      if (conn.refresh_token && (err.message?.includes('Invalid Token') || err.message?.includes('Token is expired'))) {
+        logger.info('Access token expired, attempting refresh...');
+        try {
+          const refreshToken = decrypt(conn.refresh_token);
+          const newTokens = await this.angelOne.refreshSession(refreshToken);
+          await this.repo.update(conn.id, {
+            access_token: encrypt(newTokens.accessToken),
+            refresh_token: encrypt(newTokens.refreshToken),
+          });
+          return await this.angelOne.getMarketQuote(newTokens.accessToken, exchange, symbolInfo.token, 'FULL');
+        } catch (refreshErr: any) {
+          logger.error(`Token refresh failed: ${refreshErr.message}`);
+          throw new ServiceError('Broker session expired. Please reconnect.', 'AUTH_EXPIRED', 401);
+        }
+      }
+      throw err;
+    }
   }
 
   // Symbol master delegations
