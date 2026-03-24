@@ -214,6 +214,65 @@ export class BrokerService {
     return this.angelOne.getHoldings(accessToken);
   }
 
+  // Market quote — uses any active connection to fetch from Angel One
+  async getMarketQuote(exchange: string, symbol: string): Promise<{
+    ltp: number; open: number; high: number; low: number; close: number; volume: number;
+  }> {
+    // 1. Resolve symbol token from symbol master
+    const symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
+    if (!symbolInfo) {
+      throw new ServiceError(
+        `Symbol ${exchange}:${symbol} not in symbol master. Sync first via POST /symbols/sync`,
+        'SYMBOL_NOT_FOUND', 404,
+      );
+    }
+
+    // 2. Find any active connection with a valid token
+    const activeConns = await this.repo.findActiveConnections();
+    if (activeConns.length === 0) {
+      throw new ServiceError('No active broker connection. Connect a broker first.', 'NO_CONNECTION', 401);
+    }
+
+    // Try each active connection
+    for (const conn of activeConns) {
+      if (!conn.access_token) continue;
+
+      try {
+        const accessToken = decrypt(conn.access_token);
+        const quote = await this.angelOne.getMarketQuote(accessToken, exchange, symbolInfo.token);
+        return quote;
+      } catch (err: any) {
+        // If auth expired, try refreshing the token
+        if (err.statusCode === 401 && conn.refresh_token) {
+          try {
+            const refreshToken = decrypt(conn.refresh_token);
+            const newTokens = await this.angelOne.refreshSession(refreshToken);
+            // Update stored tokens
+            await this.repo.update(conn.id, {
+              access_token: encrypt(newTokens.accessToken),
+              refresh_token: encrypt(newTokens.refreshToken),
+              token_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            });
+            // Retry with new token
+            const quote = await this.angelOne.getMarketQuote(newTokens.accessToken, exchange, symbolInfo.token);
+            return quote;
+          } catch (refreshErr: any) {
+            // Mark connection as inactive if refresh also fails
+            await this.repo.update(conn.id, { is_active: false });
+            continue;
+          }
+        }
+        // Non-auth error, try next connection
+        continue;
+      }
+    }
+
+    throw new ServiceError(
+      'All broker sessions expired. Please reconnect your broker.',
+      'AUTH_FAILED', 401,
+    );
+  }
+
   // Symbol master delegations
   async searchSymbols(query: string, exchange?: string, limit?: number) {
     return this.symbolMaster.searchSymbols(query, exchange, limit);

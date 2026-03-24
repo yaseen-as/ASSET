@@ -116,6 +116,70 @@ export class AngelOneClient {
     }
   }
 
+  /**
+   * Fetch LTP / quote data from Angel One Market API
+   * Docs: POST /rest/secure/angelbroking/market/v1/quote/
+   * mode: LTP | OHLC | FULL
+   */
+  async getMarketQuote(
+    accessToken: string,
+    exchange: string,
+    symbolToken: string,
+    mode: 'LTP' | 'OHLC' | 'FULL' = 'FULL',
+  ): Promise<{
+    ltp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }> {
+    try {
+      // Angel One exchange segments: NSE = "NSE", BSE = "BSE", NFO = "NFO"
+      const exchangeMap: Record<string, string> = {
+        NSE: 'NSE',
+        BSE: 'BSE',
+        NFO: 'NFO',
+        BFO: 'BFO',
+        MCX: 'MCX',
+        CDS: 'CDS',
+      };
+      const segment = exchangeMap[exchange] || exchange;
+
+      const response = await axios.post(
+        `${this.baseUrl}/rest/secure/angelbroking/market/v1/quote/`,
+        {
+          mode,
+          exchangeTokens: {
+            [segment]: [symbolToken],
+          },
+        },
+        { headers: this.getAuthHeaders(accessToken), timeout: 5000 },
+      );
+
+      if (!response.data?.data?.fetched?.length) {
+        throw new Error(response.data?.message || 'No quote data returned');
+      }
+
+      const quote = response.data.data.fetched[0];
+      return {
+        ltp: parseFloat(quote.ltp) || 0,
+        open: parseFloat(quote.open) || 0,
+        high: parseFloat(quote.high) || 0,
+        low: parseFloat(quote.low) || 0,
+        close: parseFloat(quote.close) || 0,
+        volume: parseInt(quote.tradeVolume || quote.volume || '0', 10),
+      };
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string }; status?: number }; message?: string };
+      const msg = axiosErr.response?.data?.message || axiosErr.message || 'Quote fetch failed';
+      const status = axiosErr.response?.status;
+      const err = new Error(`Angel One quote failed: ${msg}`) as Error & { statusCode?: number };
+      if (status === 401 || status === 403) err.statusCode = 401;
+      throw err;
+    }
+  }
+
   async refreshSession(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const response = await axios.post(

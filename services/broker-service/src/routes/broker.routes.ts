@@ -3,6 +3,7 @@ import { BrokerController } from '../controllers/broker.controller';
 import { OrderController } from '../controllers/order.controller';
 import { SymbolController } from '../controllers/symbol.controller';
 import { PaperController } from '../controllers/paper.controller';
+import { MarketController } from '../controllers/market.controller';
 
 const router = Router();
 
@@ -26,6 +27,9 @@ router.delete('/orders/:orderId/cancel', OrderController.cancelOrder);
 router.get('/symbols/search', SymbolController.search);
 router.get('/symbols/:exchange/:symbol', SymbolController.getSymbol);
 router.post('/symbols/sync', SymbolController.syncMaster);
+
+// ─── Market data (Angel One quote proxy) ────────────────────────────────────
+router.get('/market/quote/:exchange/:symbol', MarketController.getQuote);
 
 // ─── Paper trading ───────────────────────────────────────────────────────────
 router.get('/paper/balance', PaperController.getBalance);
