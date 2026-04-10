@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { authRoutes } from './routes/auth.routes';
+import { profileRoutes } from './routes/profile.routes';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 
@@ -20,6 +21,7 @@ app.get('/health', (_req, res) => {
 
 // ─── Routes ───
 app.use('/', authRoutes);
+app.use('/', profileRoutes);
 
 // ─── Error Handling ───
 app.use(errorHandler);

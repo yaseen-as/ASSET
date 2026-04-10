@@ -23,7 +23,8 @@ export const db = knex({
 });
 
 export async function initDatabase(): Promise<void> {
-  // Create schema if not exists
+  // Create both schemas (auth owns user profiles too)
   await db.raw(`CREATE SCHEMA IF NOT EXISTS ${config.db.schema}`);
+  await db.raw('CREATE SCHEMA IF NOT EXISTS users');
   await db.migrate.latest();
 }

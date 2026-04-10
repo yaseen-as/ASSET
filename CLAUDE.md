@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 9 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
+**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 8 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
 
 ## Tech Stack
 
@@ -21,8 +21,7 @@
 ├── packages/shared/         → @platform/shared (types, validators, constants)
 ├── services/
 │   ├── api-gateway/         → Port 3000 — JWT auth, rate limiting, proxy routing
-│   ├── auth-service/        → Port 3001, schema: auth — register, OTP, JWT, refresh tokens
-│   ├── user-service/        → Port 3002, schema: users — profiles, preferences
+│   ├── auth-service/        → Port 3001, schemas: auth + users — register, OTP, JWT, profiles, preferences
 │   ├── broker-service/      → Port 3003, schema: broker — Angel One SmartAPI, orders, symbol master
 │   ├── market-data-service/ → Port 3004/3014(WS), schema: market — quotes, OHLCV, indicators
 │   ├── portfolio-service/   → Port 3005, schema: portfolio — holdings, P&L, watchlists
@@ -43,14 +42,13 @@
 ```bash
 # Run individual services locally
 npm run gateway          # api-gateway
-npm run auth             # auth-service
+npm run auth             # auth-service (includes user profiles)
 npm run broker           # broker-service
 npm run market           # market-data-service
 npm run portfolio        # portfolio-service
 npm run recommendation   # recommendation-service
 npm run alert            # alert-service
 npm run notification     # notification-service
-npm run user             # user-service
 npm run web              # frontend (Vite)
 
 # Monorepo-wide

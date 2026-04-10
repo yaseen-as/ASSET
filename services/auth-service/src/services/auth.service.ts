@@ -6,6 +6,7 @@ import { generateAccessToken, generateRefreshToken, hashToken } from '../utils/j
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import type { AuthTokens } from '@platform/shared';
+import { AppError } from '../errors/app-error';
 
 export class AuthService {
   private userRepo = new UserRepository();
@@ -158,14 +159,3 @@ export class AuthService {
   }
 }
 
-// ─── Custom Error Class ───
-export class AppError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public statusCode: number
-  ) {
-    super(message);
-    this.name = 'AppError';
-  }
-}

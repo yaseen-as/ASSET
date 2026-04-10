@@ -1,11 +1,12 @@
 import { db } from '../config/database';
 
-interface ProfileRow {
+export interface ProfileRow {
   user_id: string;
   display_name: string;
   avatar_url: string | null;
   timezone: string;
   preferences: Record<string, unknown>;
+  paper_trading: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -36,6 +37,7 @@ export class ProfileRepository {
     if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
     if (data.timezone !== undefined) updateData.timezone = data.timezone;
     if (data.preferences !== undefined) updateData.preferences = JSON.stringify(data.preferences);
+    if (data.paper_trading !== undefined) updateData.paper_trading = data.paper_trading;
 
     const [profile] = await db(this.table)
       .where({ user_id: userId })

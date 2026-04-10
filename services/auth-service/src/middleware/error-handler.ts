@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../services/auth.service';
+import { AppError } from '../errors/app-error';
 import { logger } from '../utils/logger';
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {

@@ -38,11 +38,11 @@ router.use(
   })
 );
 
-// ─── User Service  /v1/users/* → user-service:/ ──────────────────────────────
+// ─── User Profiles  /v1/users/* → auth-service:/ (merged) ───────────────────
 router.use(
   '/v1/users',
   createProxyMiddleware({
-    target: config.services.user,
+    target: config.services.auth,
     changeOrigin: true,
     pathRewrite: { '^/v1/users': '' },
     on: { proxyReq: makeProxyHandler(true) },

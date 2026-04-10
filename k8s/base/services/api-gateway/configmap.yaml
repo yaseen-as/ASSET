@@ -8,7 +8,6 @@ data:
   NODE_ENV: production
   # Upstream service URLs (internal cluster DNS)
   AUTH_SERVICE_URL: http://auth-service
-  USER_SERVICE_URL: http://user-service
   BROKER_SERVICE_URL: http://broker-service
   MARKET_DATA_SERVICE_URL: http://market-data-service
   PORTFOLIO_SERVICE_URL: http://portfolio-service

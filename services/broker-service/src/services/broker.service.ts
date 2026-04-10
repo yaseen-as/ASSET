@@ -298,7 +298,7 @@ export class BrokerService {
   private async isPaperTradingEnabled(userId: string): Promise<boolean> {
     try {
       const { data } = await axios.get(
-        `${config.userServiceUrl}/api/v1/users/profile`,
+        `${config.authServiceUrl}/profile`,
         { headers: { 'x-user-id': userId }, timeout: 3000 }
       );
       return data.data?.paperTrading ?? data.data?.paper_trading ?? false;

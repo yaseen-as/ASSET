@@ -16,7 +16,6 @@
     "clean": "turbo run clean",
     "gateway": "npm run dev --workspace=services/api-gateway",
     "auth": "npm run dev --workspace=services/auth-service",
-    "user": "npm run dev --workspace=services/user-service",
     "broker": "npm run dev --workspace=services/broker-service",
     "market": "npm run dev --workspace=services/market-data-service",
     "portfolio": "npm run dev --workspace=services/portfolio-service",

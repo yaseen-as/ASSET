@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserService } from '../services/user.service';
+import { ProfileService } from '../services/profile.service';
 
-const userService = new UserService();
+const profileService = new ProfileService();
 
-export class UserController {
+export class ProfileController {
   static async getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.headers['x-user-id'] as string;
@@ -12,10 +12,10 @@ export class UserController {
         return;
       }
 
-      const profile = await userService.getProfile(userId);
+      const profile = await profileService.getProfile(userId);
       if (!profile) {
         // Auto-create profile on first access
-        const newProfile = await userService.updateProfile(userId, {});
+        const newProfile = await profileService.updateProfile(userId, {});
         res.json({ success: true, data: newProfile });
         return;
       }
@@ -34,7 +34,7 @@ export class UserController {
         return;
       }
 
-      const profile = await userService.updateProfile(userId, req.body);
+      const profile = await profileService.updateProfile(userId, req.body);
       res.json({ success: true, data: profile });
     } catch (error) {
       next(error);

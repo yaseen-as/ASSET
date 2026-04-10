@@ -17,7 +17,6 @@ export const config = {
 
   services: {
     auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
-    user: process.env.USER_SERVICE_URL || 'http://localhost:3002',
     broker: process.env.BROKER_SERVICE_URL || 'http://localhost:3003',
     marketData: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',
     portfolio: process.env.PORTFOLIO_SERVICE_URL || 'http://localhost:3005',

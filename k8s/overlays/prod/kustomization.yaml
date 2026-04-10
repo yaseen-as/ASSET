@@ -15,8 +15,6 @@ images:
     newTag: "1.0.0"
   - name: yaseenas/auth-service
     newTag: "1.0.0"
-  - name: yaseenas/user-service
-    newTag: "1.0.0"
   - name: yaseenas/broker-service
     newTag: "1.0.0"
   - name: yaseenas/market-data-service

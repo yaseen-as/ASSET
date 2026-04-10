@@ -1,16 +1,16 @@
 import { ProfileRepository } from '../repositories/profile.repository';
 import type { UserProfile, UpdateProfileDTO } from '@platform/shared';
 
-export class UserService {
+export class ProfileService {
   private profileRepo = new ProfileRepository();
 
-  async getProfile(userId: string): Promise<UserProfile | null> {
+  async getProfile(userId: string): Promise<(UserProfile & { paperTrading: boolean }) | null> {
     const row = await this.profileRepo.findByUserId(userId);
     if (!row) return null;
     return this.mapToProfile(row);
   }
 
-  async updateProfile(userId: string, data: UpdateProfileDTO & { paperTrading?: boolean }): Promise<UserProfile> {
+  async updateProfile(userId: string, data: UpdateProfileDTO & { paperTrading?: boolean }): Promise<UserProfile & { paperTrading: boolean }> {
     const updateData: Record<string, unknown> = {};
     if (data.displayName !== undefined) updateData.display_name = data.displayName;
     if (data.avatarUrl !== undefined) updateData.avatar_url = data.avatarUrl;
