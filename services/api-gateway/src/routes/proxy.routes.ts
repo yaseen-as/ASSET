@@ -72,11 +72,11 @@ router.use(
   })
 );
 
-// ─── Market Data Service  /v1/market/* → market-data-service:/ ───────────────
+// ─── Market Service  /v1/market/* → market-service:/ ────────────────────────
 router.use(
   '/v1/market',
   createProxyMiddleware({
-    target: config.services.marketData,
+    target: config.services.market,
     changeOrigin: true,
     pathRewrite: { '^/v1/market': '' },
     on: { proxyReq: makeProxyHandler() },
@@ -94,13 +94,13 @@ router.use(
   })
 );
 
-// ─── Recommendation Service  /v1/recommendations/* → recommendation-service:/
+// ─── Recommendations (merged into market-service)  /v1/recommendations/* → market-service:/recommendations
 router.use(
   '/v1/recommendations',
   createProxyMiddleware({
-    target: config.services.recommendation,
+    target: config.services.market,
     changeOrigin: true,
-    pathRewrite: { '^/v1/recommendations': '' },
+    pathRewrite: { '^/v1/recommendations': '/recommendations' },
     on: { proxyReq: makeProxyHandler() },
   })
 );

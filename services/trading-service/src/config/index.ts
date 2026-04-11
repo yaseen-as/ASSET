@@ -23,5 +23,5 @@ export const config = {
     scripMasterUrl: process.env.ANGEL_ONE_SCRIP_MASTER_URL || 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json',
   },
   authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
-  marketDataServiceUrl: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',
+  marketServiceUrl: process.env.MARKET_SERVICE_URL || 'http://localhost:3004',
 };

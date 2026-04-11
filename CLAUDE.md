@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 6 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
+**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 5 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
 
 ## Tech Stack
 
@@ -23,8 +23,7 @@
 │   ├── api-gateway/         → Port 3000 — JWT auth, rate limiting, proxy routing
 │   ├── auth-service/        → Port 3001, schemas: auth + users — register, OTP, JWT, profiles, preferences
 │   ├── trading-service/     → Port 3003, schemas: broker + portfolio — Angel One SmartAPI, orders, holdings, watchlists, paper trading
-│   ├── market-data-service/ → Port 3004/3014(WS), schema: market — quotes, OHLCV, indicators
-│   ├── recommendation-service/ → Port 3006, schema: recommendations — rule-engine signals
+│   ├── market-service/      → Port 3004/3014(WS), schemas: market + recommendations — quotes, OHLCV, indicators, signals, scheduled signal generation
 │   └── engagement-service/  → Port 3007/3018(WS), schemas: alerts + notifications — alerts, evaluation, notifications, WebSocket push
 ├── frontend/                → React SPA at port 5173 (Vite dev)
 ├── k8s/
@@ -42,8 +41,7 @@
 npm run gateway          # api-gateway
 npm run auth             # auth-service (includes user profiles)
 npm run trading          # trading-service (broker + portfolio merged)
-npm run market           # market-data-service
-npm run recommendation   # recommendation-service
+npm run market           # market-service (market data + recommendations merged)
 npm run engagement       # engagement-service (alerts + notifications)
 npm run web              # frontend (Vite)
 
@@ -80,9 +78,10 @@ kubectl apply -k k8s/overlays/dev
 | From | To | Method | URL Pattern |
 |------|----|--------|-------------|
 | API Gateway | Any service | HTTP Proxy | Strips `/v1/<name>` prefix |
-| market-data-service | trading-service | HTTP | `http://trading-service/market/quote/:exchange/:symbol` |
+| market-service | trading-service | HTTP | `http://trading-service/market/quote/:exchange/:symbol` |
+| recommendations domain (market) | market domain (market) | Direct call | In-process function call — no HTTP |
 | portfolio domain (trading) | broker domain (trading) | Direct call | In-process function call — no HTTP |
-| portfolio domain (trading) | market-data-service | HTTP | `http://market-data-service/quote/:exchange/:symbol` |
+| portfolio domain (trading) | market-service | HTTP | `http://market-service/quote/:exchange/:symbol` |
 | Any service | Redis | Pub/Sub | `market:tick:*`, `alert:triggered`, etc. |
 
 **Important**: Internal service-to-service calls do NOT use the `/v1/<service>` prefix. That prefix is only for external requests through the API gateway.
@@ -139,6 +138,8 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 - Internal service-to-service URLs must NOT use the API gateway prefix (`/v1/broker/...`). Use the direct route path.
 - Symbol master must be synced before market quotes or order placement can work. Auto-syncs on trading-service startup if stale.
 - Broker credentials are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `services/trading-service/src/utils/encryption.ts`.
-- `portfolio.service.ts` calls `brokerService.getConnections()` and `brokerService.getHoldings()` directly (no HTTP). Market data still uses HTTP to `market-data-service`.
-- trading-service domain layout: `src/broker/` owns broker/orders/paper-trading, `src/portfolio/` owns holdings/watchlists. Both are wired in `server.ts`.
+- `portfolio.service.ts` calls `brokerService.getConnections()` and `brokerService.getHoldings()` directly (no HTTP). Market data uses HTTP to `market-service`.
+- trading-service domain layout: `src/broker/` owns broker/orders/paper-trading, `src/portfolio/` owns holdings/watchlists. Both wired via DI in `server.ts`.
+- market-service domain layout: `src/market/` owns quotes/OHLCV/indicators/WebSocket, `src/recommendations/` owns signals/scheduling. `SignalGeneratorService` receives `MarketDataService` via constructor — no HTTP for historical data.
+- Signal scheduler runs every 4 hours; on startup, skips if signals exist within last 20h.
 - The frontend at `localhost:5173` proxies API calls to `localhost:3000` (gateway). In K8s, ingress handles this.

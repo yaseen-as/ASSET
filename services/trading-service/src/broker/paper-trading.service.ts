@@ -233,7 +233,7 @@ export class PaperTradingService {
     }
     try {
       const { data } = await axios.get(
-        `${config.marketDataServiceUrl}/quote/${exchange}/${symbol}`,
+        `${config.marketServiceUrl}/quote/${exchange}/${symbol}`,
         { timeout: 3000 }
       );
       return data.data?.ltp || 0;

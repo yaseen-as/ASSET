@@ -45,7 +45,7 @@ export class PortfolioService {
     for (const h of holdings) {
       try {
         const { data } = await axios.get(
-          `${config.marketDataServiceUrl}/quote/${h.exchange}/${h.symbol}`,
+          `${config.marketServiceUrl}/quote/${h.exchange}/${h.symbol}`,
           { timeout: 3000 },
         );
         if (data.data?.ltp) {

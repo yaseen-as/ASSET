@@ -13,6 +13,6 @@ data:
   DB_PASSWORD: admin123
   REDIS_URL: redis://redis-service:6379
   AUTH_SERVICE_URL: http://auth-service
-  MARKET_DATA_SERVICE_URL: http://market-data-service
+  MARKET_SERVICE_URL: http://market-service
   ANGEL_ONE_API_URL: https://apiconnect.angelone.in
   ANGEL_ONE_SCRIP_MASTER_URL: https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json

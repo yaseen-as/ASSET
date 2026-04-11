@@ -5,8 +5,7 @@ resources:
   - api-gateway/
   - auth-service/
   - trading-service/
-  - market-data-service/
-  - recommendation-service/
+  - market-service/
   - engagement-service/
 
 # Wait for postgres before starting any backend service

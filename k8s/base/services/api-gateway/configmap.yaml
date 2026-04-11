@@ -9,8 +9,7 @@ data:
   # Upstream service URLs (internal cluster DNS)
   AUTH_SERVICE_URL: http://auth-service
   TRADING_SERVICE_URL: http://trading-service
-  MARKET_DATA_SERVICE_URL: http://market-data-service
-  RECOMMENDATION_SERVICE_URL: http://recommendation-service
+  MARKET_SERVICE_URL: http://market-service
   ENGAGEMENT_SERVICE_URL: http://engagement-service
   REDIS_URL: redis://redis-service:6379
   # Must match auth-service JWT_SECRET
