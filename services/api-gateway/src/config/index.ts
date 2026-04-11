@@ -21,8 +21,7 @@ export const config = {
     marketData: process.env.MARKET_DATA_SERVICE_URL || 'http://localhost:3004',
     portfolio: process.env.PORTFOLIO_SERVICE_URL || 'http://localhost:3005',
     recommendation: process.env.RECOMMENDATION_SERVICE_URL || 'http://localhost:3006',
-    alert: process.env.ALERT_SERVICE_URL || 'http://localhost:3007',
-    notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3008',
+    engagement: process.env.ENGAGEMENT_SERVICE_URL || 'http://localhost:3007',
   },
 
   rateLimit: {

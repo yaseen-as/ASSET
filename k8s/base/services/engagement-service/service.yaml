@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: engagement-service
+spec:
+  selector:
+    app: engagement-service
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3007
+    - name: ws
+      port: 3018
+      targetPort: 3018

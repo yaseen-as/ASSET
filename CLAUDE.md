@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 8 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
+**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 7 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
 
 ## Tech Stack
 
@@ -26,8 +26,7 @@
 │   ├── market-data-service/ → Port 3004/3014(WS), schema: market — quotes, OHLCV, indicators
 │   ├── portfolio-service/   → Port 3005, schema: portfolio — holdings, P&L, watchlists
 │   ├── recommendation-service/ → Port 3006, schema: recommendations — rule-engine signals
-│   ├── alert-service/       → Port 3007, schema: alerts — real-time evaluation, 7 condition types
-│   └── notification-service/→ Port 3008/3018(WS), schema: notifications — in-app, email, push
+│   └── engagement-service/  → Port 3007/3018(WS), schemas: alerts + notifications — alerts, evaluation, notifications, WebSocket push
 ├── frontend/                → React SPA at port 5173 (Vite dev)
 ├── k8s/
 │   ├── base/                → Shared K8s manifests (deployments, services, configmaps, secrets)
@@ -47,8 +46,7 @@ npm run broker           # broker-service
 npm run market           # market-data-service
 npm run portfolio        # portfolio-service
 npm run recommendation   # recommendation-service
-npm run alert            # alert-service
-npm run notification     # notification-service
+npm run engagement       # engagement-service (alerts + notifications)
 npm run web              # frontend (Vite)
 
 # Monorepo-wide

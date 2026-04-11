@@ -20,8 +20,7 @@
     "market": "npm run dev --workspace=services/market-data-service",
     "portfolio": "npm run dev --workspace=services/portfolio-service",
     "recommendation": "npm run dev --workspace=services/recommendation-service",
-    "alert": "npm run dev --workspace=services/alert-service",
-    "notification": "npm run dev --workspace=services/notification-service",
+    "engagement": "npm run dev --workspace=services/engagement-service",
     "web": "npm run dev --workspace=frontend"
   },
   "devDependencies": {

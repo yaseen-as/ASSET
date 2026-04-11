@@ -8,8 +8,7 @@ resources:
   - market-data-service/
   - portfolio-service/
   - recommendation-service/
-  - alert-service/
-  - notification-service/
+  - engagement-service/
 
 # Wait for postgres before starting any backend service
 patches:

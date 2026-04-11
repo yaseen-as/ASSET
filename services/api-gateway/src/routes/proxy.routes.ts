@@ -105,24 +105,23 @@ router.use(
   })
 );
 
-// ─── Alert Service  /v1/alerts/* → alert-service:/ ───────────────────────────
+// ─── Engagement Service (alerts + notifications merged) ─────────────────────
 router.use(
   '/v1/alerts',
   createProxyMiddleware({
-    target: config.services.alert,
+    target: config.services.engagement,
     changeOrigin: true,
-    pathRewrite: { '^/v1/alerts': '' },
+    pathRewrite: { '^/v1/alerts': '/alerts' },
     on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Notification Service  /v1/notifications/* → notification-service:/ ──────
 router.use(
   '/v1/notifications',
   createProxyMiddleware({
-    target: config.services.notification,
+    target: config.services.engagement,
     changeOrigin: true,
-    pathRewrite: { '^/v1/notifications': '' },
+    pathRewrite: { '^/v1/notifications': '/notifications' },
     on: { proxyReq: makeProxyHandler() },
   })
 );

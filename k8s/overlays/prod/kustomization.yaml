@@ -23,9 +23,7 @@ images:
     newTag: "1.0.0"
   - name: yaseenas/recommendation-service
     newTag: "1.0.0"
-  - name: yaseenas/alert-service
-    newTag: "1.0.0"
-  - name: yaseenas/notification-service
+  - name: yaseenas/engagement-service
     newTag: "1.0.0"
   - name: yaseenas/react-frontend
     newTag: "1.0.0"
