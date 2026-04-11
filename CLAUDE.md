@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 7 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
+**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 6 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
 
 ## Tech Stack
 
 - **Frontend**: React 19, TypeScript, Vite 6, Tailwind CSS, Zustand, React Router v7, Chart.js/Recharts
 - **Backend**: Node.js (>=18), Express 4, TypeScript 5.7 (strict), Knex.js 3.1 (query builder + migrations)
-- **Database**: PostgreSQL 15 — single DB, schema-per-service isolation (auth, users, broker, market, portfolio, alerts, recommendations, notifications)
+- **Database**: PostgreSQL 15 — single DB, schema-per-service isolation (auth, users, broker, portfolio, market, alerts, recommendations, notifications)
 - **Cache/Pubsub**: Redis 7 — tick caching, symbol caching, pub/sub events
 - **Validation**: Zod schemas in `@platform/shared`
 - **Monorepo**: npm workspaces + Turborepo
@@ -22,9 +22,8 @@
 ├── services/
 │   ├── api-gateway/         → Port 3000 — JWT auth, rate limiting, proxy routing
 │   ├── auth-service/        → Port 3001, schemas: auth + users — register, OTP, JWT, profiles, preferences
-│   ├── broker-service/      → Port 3003, schema: broker — Angel One SmartAPI, orders, symbol master
+│   ├── trading-service/     → Port 3003, schemas: broker + portfolio — Angel One SmartAPI, orders, holdings, watchlists, paper trading
 │   ├── market-data-service/ → Port 3004/3014(WS), schema: market — quotes, OHLCV, indicators
-│   ├── portfolio-service/   → Port 3005, schema: portfolio — holdings, P&L, watchlists
 │   ├── recommendation-service/ → Port 3006, schema: recommendations — rule-engine signals
 │   └── engagement-service/  → Port 3007/3018(WS), schemas: alerts + notifications — alerts, evaluation, notifications, WebSocket push
 ├── frontend/                → React SPA at port 5173 (Vite dev)
@@ -42,9 +41,8 @@
 # Run individual services locally
 npm run gateway          # api-gateway
 npm run auth             # auth-service (includes user profiles)
-npm run broker           # broker-service
+npm run trading          # trading-service (broker + portfolio merged)
 npm run market           # market-data-service
-npm run portfolio        # portfolio-service
 npm run recommendation   # recommendation-service
 npm run engagement       # engagement-service (alerts + notifications)
 npm run web              # frontend (Vite)
@@ -82,9 +80,9 @@ kubectl apply -k k8s/overlays/dev
 | From | To | Method | URL Pattern |
 |------|----|--------|-------------|
 | API Gateway | Any service | HTTP Proxy | Strips `/v1/<name>` prefix |
-| market-data-service | broker-service | HTTP | `http://broker-service:3003/market/quote/:exchange/:symbol` |
-| portfolio-service | broker-service | HTTP | `http://broker-service:3003/holdings/:connectionId` |
-| portfolio-service | market-data-service | HTTP | `http://market-data-service:3004/quotes/batch` |
+| market-data-service | trading-service | HTTP | `http://trading-service/market/quote/:exchange/:symbol` |
+| portfolio domain (trading) | broker domain (trading) | Direct call | In-process function call — no HTTP |
+| portfolio domain (trading) | market-data-service | HTTP | `http://market-data-service/quote/:exchange/:symbol` |
 | Any service | Redis | Pub/Sub | `market:tick:*`, `alert:triggered`, etc. |
 
 **Important**: Internal service-to-service calls do NOT use the `/v1/<service>` prefix. That prefix is only for external requests through the API gateway.
@@ -120,7 +118,7 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 
 ## Angel One SmartAPI Integration
 
-- **Client**: `services/broker-service/src/services/angelone.client.ts`
+- **Client**: `services/trading-service/src/broker/angelone.client.ts`
 - **Auth flow**: `POST /rest/auth/angelbroking/user/v1/loginByPassword` with clientcode + password + TOTP
 - **Market quotes**: `POST /rest/secure/angelbroking/market/v1/quote` with `exchangeTokens: { NSE: [token] }`
 - **Symbol master**: Downloaded from ScripMaster JSON URL, stored in `broker.symbol_master` table
@@ -139,6 +137,8 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 
 - The `apiUrl` config for Angel One should NOT include `/rest` — the client code appends `/rest/...` to all endpoints.
 - Internal service-to-service URLs must NOT use the API gateway prefix (`/v1/broker/...`). Use the direct route path.
-- Symbol master must be synced before market quotes or order placement can work. Auto-syncs on broker-service startup if stale.
-- Broker credentials are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `utils/encryption.ts`.
+- Symbol master must be synced before market quotes or order placement can work. Auto-syncs on trading-service startup if stale.
+- Broker credentials are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `services/trading-service/src/utils/encryption.ts`.
+- `portfolio.service.ts` calls `brokerService.getConnections()` and `brokerService.getHoldings()` directly (no HTTP). Market data still uses HTTP to `market-data-service`.
+- trading-service domain layout: `src/broker/` owns broker/orders/paper-trading, `src/portfolio/` owns holdings/watchlists. Both are wired in `server.ts`.
 - The frontend at `localhost:5173` proxies API calls to `localhost:3000` (gateway). In K8s, ingress handles this.

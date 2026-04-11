@@ -49,13 +49,13 @@ router.use(
   })
 );
 
-// ─── Broker Service  /v1/broker/* → broker-service:/ ────────────────────────
+// ─── Trading Service  /v1/broker/* → trading-service:/ ──────────────────────
 // Order routes get a stricter rate-limiter applied first.
 router.use(
   '/v1/broker/orders',
   orderLimiter,
   createProxyMiddleware({
-    target: config.services.broker,
+    target: config.services.trading,
     changeOrigin: true,
     pathRewrite: { '^/v1/broker': '' },
     on: { proxyReq: makeProxyHandler() },
@@ -65,7 +65,7 @@ router.use(
 router.use(
   '/v1/broker',
   createProxyMiddleware({
-    target: config.services.broker,
+    target: config.services.trading,
     changeOrigin: true,
     pathRewrite: { '^/v1/broker': '' },
     on: { proxyReq: makeProxyHandler() },
@@ -83,13 +83,13 @@ router.use(
   })
 );
 
-// ─── Portfolio Service  /v1/portfolio/* → portfolio-service:/ ────────────────
+// ─── Portfolio (merged into trading-service)  /v1/portfolio/* → trading-service:/portfolio ──
 router.use(
   '/v1/portfolio',
   createProxyMiddleware({
-    target: config.services.portfolio,
+    target: config.services.trading,
     changeOrigin: true,
-    pathRewrite: { '^/v1/portfolio': '' },
+    pathRewrite: { '^/v1/portfolio': '/portfolio' },
     on: { proxyReq: makeProxyHandler() },
   })
 );

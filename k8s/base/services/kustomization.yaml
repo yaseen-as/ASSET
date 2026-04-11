@@ -4,9 +4,8 @@ kind: Kustomization
 resources:
   - api-gateway/
   - auth-service/
-  - broker-service/
+  - trading-service/
   - market-data-service/
-  - portfolio-service/
   - recommendation-service/
   - engagement-service/
 

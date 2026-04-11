@@ -8,9 +8,8 @@ data:
   NODE_ENV: production
   # Upstream service URLs (internal cluster DNS)
   AUTH_SERVICE_URL: http://auth-service
-  BROKER_SERVICE_URL: http://broker-service
+  TRADING_SERVICE_URL: http://trading-service
   MARKET_DATA_SERVICE_URL: http://market-data-service
-  PORTFOLIO_SERVICE_URL: http://portfolio-service
   RECOMMENDATION_SERVICE_URL: http://recommendation-service
   ENGAGEMENT_SERVICE_URL: http://engagement-service
   REDIS_URL: redis://redis-service:6379
