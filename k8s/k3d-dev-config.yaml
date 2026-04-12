@@ -33,7 +33,7 @@ ports:
 
 volumes:
   # Mount the monorepo root into all nodes so hostPath volumes work
-  - volume: /home/ioss/Desktop/as/asset_management:/app
+  - volume: ${PROJECT_PATH}:/app
     nodeFilters:
       - all
 
