@@ -10,7 +10,6 @@ data:
   DB_PORT: "5432"
   DB_NAME: asset_management
   DB_USER: admin
-  DB_PASSWORD: admin123
   REDIS_URL: redis://redis-service:6379
   AUTH_SERVICE_URL: http://auth-service
   MARKET_SERVICE_URL: http://market-service
