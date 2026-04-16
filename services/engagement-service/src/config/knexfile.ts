@@ -10,10 +10,10 @@ const knexConfig: Knex.Config = {
     user: config.database.user,
     password: config.database.password,
   },
-  searchPath: [config.database.schema, 'public'],
+  searchPath: ['alerts', 'notifications', 'public'],
   migrations: {
     directory: '../migrations',
-    schemaName: config.database.schema,
+    schemaName: 'alerts',
     tableName: 'knex_migrations',
   },
 };

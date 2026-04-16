@@ -1,6 +1,27 @@
 import knex from 'knex';
 import { config } from './index';
 
+async function ensureDatabase(): Promise<void> {
+  const admin = knex({
+    client: 'pg',
+    connection: {
+      host: config.db.host,
+      port: config.db.port,
+      database: 'postgres',
+      user: config.db.user,
+      password: config.db.password,
+    },
+  });
+  try {
+    await admin.raw(`CREATE DATABASE "${config.db.database}"`);
+    console.log(`Created database "${config.db.database}"`);
+  } catch (err: any) {
+    if (!err.message.includes('already exists')) throw err;
+  } finally {
+    await admin.destroy();
+  }
+}
+
 export const db = knex({
   client: 'pg',
   connection: {
@@ -10,21 +31,21 @@ export const db = knex({
     user: config.db.user,
     password: config.db.password,
   },
-  searchPath: [config.db.schema, 'public'],
+  searchPath: ['auth', 'users', 'public'],
   pool: {
     min: 2,
     max: 10,
   },
   migrations: {
     directory: './migrations',
-    schemaName: config.db.schema,
+    schemaName: 'auth',
     tableName: 'knex_migrations',
   },
 });
 
 export async function initDatabase(): Promise<void> {
-  // Create both schemas (auth owns user profiles too)
-  await db.raw(`CREATE SCHEMA IF NOT EXISTS ${config.db.schema}`);
+  await ensureDatabase();
+  await db.raw('CREATE SCHEMA IF NOT EXISTS auth');
   await db.raw('CREATE SCHEMA IF NOT EXISTS users');
   await db.migrate.latest();
 }
