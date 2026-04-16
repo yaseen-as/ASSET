@@ -46,7 +46,7 @@ export class MarketDataService {
       };
     }
 
-    // 3. Fetch real-time quote from trading-service (Angel One Smart API)
+    // 3. Fetch real-time quote from trading-service (Upstox API)
     try {
       const { data } = await axios.get(
         `${config.tradingServiceUrl}/market/quote/${exchange}/${symbol}`,

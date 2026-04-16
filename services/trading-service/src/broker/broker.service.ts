@@ -1,13 +1,13 @@
 import axios from 'axios';
 import { BrokerConnectionRepository, type ConnectionRow } from './broker.repository';
 import { OrderRepository } from './order.repository';
-import { AngelOneClient } from './angelone.client';
-import { SymbolMasterService } from './symbol-master.service';
+import * as upstox from './upstox.client';
+import { UpstoxInstrumentService, type SymbolInfo } from './upstox-instrument.service';
 import { PaperTradingService, type PaperBalance } from './paper-trading.service';
 import { encrypt, decrypt } from '../utils/encryption';
 import { config } from '../config';
 import { logger } from '../utils/logger';
-import type { BrokerConnection, ConnectBrokerDTO, PlaceOrderDTO, OrderResponse } from '@platform/shared';
+import type { BrokerConnection, PlaceOrderDTO, OrderResponse } from '@platform/shared';
 
 export class ServiceError extends Error {
   constructor(message: string, public code: string, public statusCode: number) {
@@ -19,32 +19,33 @@ export class ServiceError extends Error {
 export class BrokerService {
   private repo = new BrokerConnectionRepository();
   private orderRepo = new OrderRepository();
-  private angelOne = new AngelOneClient();
-  private symbolMaster = new SymbolMasterService();
+  private instruments = new UpstoxInstrumentService();
   private paperTrading = new PaperTradingService();
 
-  async connect(userId: string, dto: ConnectBrokerDTO): Promise<BrokerConnection> {
-    const existing = await this.repo.findByUserIdAndBroker(userId, dto.brokerName);
-    if (existing) {
-      throw new ServiceError('Broker already connected. Disconnect first.', 'BROKER_ALREADY_CONNECTED', 409);
+  // ─── Token helper ──────────────────────────────────────────────────────────
+  // Every Upstox API call reads the user's access_token from the DB at call time.
+
+  private async getAccessToken(userId: string): Promise<string> {
+    const conn = await this.repo.findActiveByUserId(userId);
+    if (!conn || !conn.access_token) {
+      throw new ServiceError('Upstox account not connected', 'BROKER_NOT_CONNECTED', 401);
     }
-
-    const tokens = await this.angelOne.login(dto.clientId, dto.password, dto.totp);
-    logger.info(`tokens: ${JSON.stringify(tokens)}`);
-
-    const row = await this.repo.create({
-      user_id: userId,
-      broker_name: dto.brokerName,
-      client_id: encrypt(dto.clientId),
-      access_token: encrypt(tokens.accessToken),
-      refresh_token: encrypt(tokens.refreshToken),
-      feed_token: tokens.feedToken ? encrypt(tokens.feedToken) : null,
-      token_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      is_active: true,
-    });
-
-    return this.mapToConnection(row);
+    if (conn.expires_at && new Date(conn.expires_at) < new Date()) {
+      throw new ServiceError('Upstox session expired — please reconnect', 'TOKEN_EXPIRED', 401);
+    }
+    return decrypt(conn.access_token);
   }
+
+  private async getAnyAccessToken(): Promise<string> {
+    const conns = await this.repo.findActiveConnections();
+    const conn = conns.find(c => c.access_token && (!c.expires_at || new Date(c.expires_at) > new Date()));
+    if (!conn || !conn.access_token) {
+      throw new ServiceError('No active broker connection available', 'NO_SESSION', 401);
+    }
+    return decrypt(conn.access_token);
+  }
+
+  // ─── Connection management ─────────────────────────────────────────────────
 
   async disconnect(userId: string, connectionId: string): Promise<void> {
     const conn = await this.repo.findById(connectionId);
@@ -68,6 +69,19 @@ export class BrokerService {
     return this.mapToConnection(updated);
   }
 
+  // ─── Holdings ──────────────────────────────────────────────────────────────
+
+  async getHoldings(userId: string, connectionId: string): Promise<unknown[]> {
+    const conn = await this.repo.findById(connectionId);
+    if (!conn || conn.user_id !== userId || !conn.access_token) {
+      throw new ServiceError('Connection not found or no session', 'NOT_FOUND', 404);
+    }
+    const token = decrypt(conn.access_token);
+    return upstox.getHoldings(token);
+  }
+
+  // ─── Orders ────────────────────────────────────────────────────────────────
+
   async placeOrder(userId: string, dto: PlaceOrderDTO): Promise<OrderResponse> {
     const isPaper = await this.isPaperTradingEnabled(userId);
 
@@ -83,34 +97,22 @@ export class BrokerService {
       });
     }
 
-    const conn = await this.repo.findById(dto.connectionId);
-    if (!conn || conn.user_id !== userId) {
-      throw new ServiceError('Connection not found', 'NOT_FOUND', 404);
-    }
-    if (!conn.is_active) {
-      throw new ServiceError('Broker connection is disabled', 'BROKER_DISABLED', 400);
-    }
-    if (!conn.access_token) {
-      throw new ServiceError('No valid broker session', 'NO_SESSION', 401);
+    const token = await this.getAccessToken(userId);
+
+    // Resolve symbol → Upstox instrument_key
+    const symbolInfo = await this.instruments.resolveInstrument(dto.symbol, dto.exchange);
+    if (!symbolInfo) {
+      throw new ServiceError(`Symbol ${dto.exchange}:${dto.symbol} not found`, 'SYMBOL_NOT_FOUND', 404);
     }
 
-    const symbolInfo = await this.symbolMaster.resolveToken(dto.symbol, dto.exchange);
-    const tradingSymbol = symbolInfo?.tradingSymbol || dto.symbol;
-    const symbolToken = symbolInfo?.token || '';
-
-    const accessToken = decrypt(conn.access_token);
-
-    const result = await this.angelOne.placeOrder(accessToken, {
-      variety: 'NORMAL',
-      tradingsymbol: tradingSymbol,
-      symboltoken: symbolToken,
-      transactiontype: dto.action,
-      exchange: dto.exchange,
-      ordertype: dto.orderType,
-      producttype: dto.productType || 'DELIVERY',
-      duration: 'DAY',
-      price: dto.price?.toString() || '0',
-      quantity: dto.quantity.toString(),
+    const result = await upstox.placeOrder(token, {
+      instrument_token: symbolInfo.instrumentKey,
+      quantity: dto.quantity,
+      product: dto.productType === 'INTRADAY' ? 'I' : 'D',
+      validity: 'DAY',
+      price: dto.price || 0,
+      order_type: dto.orderType as any,
+      transaction_type: dto.action as 'BUY' | 'SELL',
     });
 
     const order = await this.orderRepo.create({
@@ -128,11 +130,7 @@ export class BrokerService {
       source: 'live',
     });
 
-    return {
-      orderId: order.id,
-      status: 'PLACED',
-      message: 'Order placed successfully.',
-    };
+    return { orderId: order.id, status: 'PLACED', message: 'Order placed successfully.' };
   }
 
   async cancelOrder(userId: string, orderId: string): Promise<void> {
@@ -149,17 +147,12 @@ export class BrokerService {
       return;
     }
 
-    if (!order.connection_id || !order.broker_order_id) {
+    if (!order.broker_order_id) {
       throw new ServiceError('Cannot cancel — missing broker reference', 'NO_BROKER_REF', 400);
     }
 
-    const conn = await this.repo.findById(order.connection_id);
-    if (!conn?.access_token) {
-      throw new ServiceError('No valid broker session', 'NO_SESSION', 401);
-    }
-
-    const accessToken = decrypt(conn.access_token);
-    await this.angelOne.cancelOrder(accessToken, 'NORMAL', order.broker_order_id);
+    const token = await this.getAccessToken(userId);
+    await upstox.cancelOrder(token, order.broker_order_id);
     await this.orderRepo.updateStatus(orderId, { status: 'CANCELLED' });
   }
 
@@ -181,106 +174,31 @@ export class BrokerService {
     return this.orderRepo.getStats(userId);
   }
 
-  async getFeedTokens(userId: string): Promise<{ connectionId: string; feedToken: string }[]> {
-    const rows = await this.repo.findByUserId(userId);
-    const result: { connectionId: string; feedToken: string }[] = [];
-    for (const row of rows) {
-      if (row.is_active && row.feed_token) {
-        result.push({ connectionId: row.id, feedToken: decrypt(row.feed_token) });
-      }
-    }
-    return result;
-  }
-
-  async getActiveFeedTokens(): Promise<{ userId: string; feedToken: string; clientId: string }[]> {
-    const rows = await this.repo.findActiveConnections();
-    const result: { userId: string; feedToken: string; clientId: string }[] = [];
-    for (const row of rows) {
-      if (row.feed_token) {
-        result.push({
-          userId: row.user_id,
-          feedToken: decrypt(row.feed_token),
-          clientId: decrypt(row.client_id),
-        });
-      }
-    }
-    return result;
-  }
-
-  async getHoldings(userId: string, connectionId: string): Promise<unknown[]> {
-    const conn = await this.repo.findById(connectionId);
-    if (!conn || conn.user_id !== userId || !conn.access_token) {
-      throw new ServiceError('Connection not found or no session', 'NOT_FOUND', 404);
-    }
-    const accessToken = decrypt(conn.access_token);
-    return this.angelOne.getHoldings(accessToken);
-  }
-
-  async getConnectionsRaw(userId: string): Promise<ConnectionRow[]> {
-    return this.repo.findByUserId(userId);
-  }
+  // ─── Market quotes (uses any active connection's token) ────────────────────
 
   async getQuote(exchange: string, symbol: string): Promise<{
     ltp: number; open: number; high: number; low: number; close: number; volume: number;
   }> {
-    const activeConns = await this.repo.findActiveConnections();
-    const conn = activeConns.find(c => c.access_token);
-    if (!conn || !conn.access_token) {
-      throw new ServiceError('No active broker connection available for market data', 'NO_SESSION', 401);
-    }
-
-    let symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
-    if (!symbolInfo) {
-      const isStale = await this.symbolMaster.isStale();
-      if (isStale) {
-        logger.info(`Symbol ${exchange}:${symbol} not found, triggering symbol master sync...`);
-        try {
-          await this.symbolMaster.fetchAndSync();
-          symbolInfo = await this.symbolMaster.resolveToken(symbol, exchange);
-        } catch (syncErr: any) {
-          logger.error(`Symbol master sync failed: ${syncErr.message}`);
-        }
-      }
-      if (!symbolInfo) {
-        throw new ServiceError(`Symbol ${exchange}:${symbol} not found in master. Try syncing symbol master.`, 'SYMBOL_NOT_FOUND', 404);
-      }
-    }
-
-    let accessToken = decrypt(conn.access_token);
-
-    try {
-      return await this.angelOne.getMarketQuote(accessToken, exchange, symbolInfo.token, 'FULL');
-    } catch (err: any) {
-      if (conn.refresh_token && (err.message?.includes('Invalid Token') || err.message?.includes('Token is expired'))) {
-        logger.info('Access token expired, attempting refresh...');
-        try {
-          const refreshToken = decrypt(conn.refresh_token);
-          const newTokens = await this.angelOne.refreshSession(refreshToken);
-          await this.repo.update(conn.id, {
-            access_token: encrypt(newTokens.accessToken),
-            refresh_token: encrypt(newTokens.refreshToken),
-          });
-          return await this.angelOne.getMarketQuote(newTokens.accessToken, exchange, symbolInfo.token, 'FULL');
-        } catch (refreshErr: any) {
-          logger.error(`Token refresh failed: ${refreshErr.message}`);
-          throw new ServiceError('Broker session expired. Please reconnect.', 'AUTH_EXPIRED', 401);
-        }
-      }
-      throw err;
-    }
+    const symbolInfo = await this.resolveWithAutoSync(symbol, exchange);
+    const token = await this.getAnyAccessToken();
+    return upstox.getQuote(token, symbolInfo.instrumentKey);
   }
 
+  // ─── Symbols ───────────────────────────────────────────────────────────────
+
   async searchSymbols(query: string, exchange?: string, limit?: number) {
-    return this.symbolMaster.searchSymbols(query, exchange, limit);
+    return this.instruments.searchSymbols(query, exchange, limit);
   }
 
   async getSymbolInfo(symbol: string, exchange: string) {
-    return this.symbolMaster.resolveToken(symbol, exchange);
+    return this.instruments.resolveInstrument(symbol, exchange);
   }
 
   async syncSymbolMaster() {
-    return this.symbolMaster.fetchAndSync();
+    return this.instruments.fetchAndSync();
   }
+
+  // ─── Paper trading ─────────────────────────────────────────────────────────
 
   async getPaperBalance(userId: string): Promise<PaperBalance> {
     return this.paperTrading.getBalance(userId);
@@ -292,6 +210,30 @@ export class BrokerService {
 
   async resetPaperAccount(userId: string) {
     return this.paperTrading.resetAccount(userId);
+  }
+
+  // ─── Raw access for portfolio domain ───────────────────────────────────────
+
+  async getConnectionsRaw(userId: string): Promise<ConnectionRow[]> {
+    return this.repo.findByUserId(userId);
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  private async resolveWithAutoSync(symbol: string, exchange: string): Promise<SymbolInfo> {
+    let info = await this.instruments.resolveInstrument(symbol, exchange);
+    if (!info) {
+      const isStale = await this.instruments.isStale();
+      if (isStale) {
+        logger.info(`Symbol ${exchange}:${symbol} not found, triggering instrument sync...`);
+        await this.instruments.fetchAndSync();
+        info = await this.instruments.resolveInstrument(symbol, exchange);
+      }
+      if (!info) {
+        throw new ServiceError(`Symbol ${exchange}:${symbol} not found. Try syncing instruments.`, 'SYMBOL_NOT_FOUND', 404);
+      }
+    }
+    return info;
   }
 
   private async isPaperTradingEnabled(userId: string): Promise<boolean> {

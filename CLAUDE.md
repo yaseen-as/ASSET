@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 5 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Angel One broker via SmartAPI.
+**SwingTrade** — A full-stack asset management and trading platform for Indian equity markets (NSE/BSE). Monorepo with 5 microservices, React frontend, PostgreSQL, Redis, and Kubernetes orchestration. Integrated with Upstox broker via OAuth 2.0 API.
 
 ## Tech Stack
 
 - **Frontend**: React 19, TypeScript, Vite 6, Tailwind CSS, Zustand, React Router v7, Chart.js/Recharts
 - **Backend**: Node.js (>=18), Express 4, TypeScript 5.7 (strict), Knex.js 3.1 (query builder + migrations)
-- **Database**: PostgreSQL 15 — single DB, schema-per-service isolation (auth, users, broker, portfolio, market, alerts, recommendations, notifications)
+- **Database**: PostgreSQL 15 — database-per-service (auth_db, trading_db, market_db, engagement_db) on a single DBMS, with schema isolation within each database
 - **Cache/Pubsub**: Redis 7 — tick caching, symbol caching, pub/sub events
 - **Validation**: Zod schemas in `@platform/shared`
 - **Monorepo**: npm workspaces + Turborepo
@@ -22,7 +22,7 @@
 ├── services/
 │   ├── api-gateway/         → Port 3000 — JWT auth, rate limiting, proxy routing
 │   ├── auth-service/        → Port 3001, schemas: auth + users — register, OTP, JWT, profiles, preferences
-│   ├── trading-service/     → Port 3003, schemas: broker + portfolio — Angel One SmartAPI, orders, holdings, watchlists, paper trading
+│   ├── trading-service/     → Port 3003, schemas: broker + portfolio — Upstox OAuth, orders, holdings, watchlists, paper trading
 │   ├── market-service/      → Port 3004/3014(WS), schemas: market + recommendations — quotes, OHLCV, indicators, signals, scheduled signal generation
 │   └── engagement-service/  → Port 3007/3018(WS), schemas: alerts + notifications — alerts, evaluation, notifications, WebSocket push
 ├── frontend/                → React SPA at port 5173 (Vite dev)
@@ -65,7 +65,7 @@ kubectl apply -k k8s/overlays/dev
 
 ## Architecture Patterns
 
-- **Schema-per-service**: Each service owns its PostgreSQL schema. No cross-schema joins or foreign keys.
+- **Database-per-service**: Each service owns its own PostgreSQL database (auth_db, trading_db, market_db, engagement_db) within a single DBMS. Schema isolation within each database (e.g., trading_db has `broker` + `portfolio` schemas). No cross-database or cross-schema joins.
 - **Service-to-service calls**: Internal HTTP via Kubernetes DNS (`http://broker-service:3003`). No API gateway prefix internally.
 - **API Gateway proxying**: External calls go through gateway at port 3000. Path rewrite strips `/v1/<service>` prefix before forwarding.
 - **Event-driven**: Redis pub/sub channels: `market:tick:*`, `alert:triggered`, `recommendation:new`, `order:executed`.
@@ -98,31 +98,39 @@ When adding a new DTO or type, add it to the shared package and re-export from `
 
 ## Database Conventions
 
+- **Database-per-service**: auth_db, trading_db, market_db, engagement_db — all on one PostgreSQL host. Each `database.ts` has `ensureDatabase()` that auto-creates the database on first startup (connects to `postgres` default DB, runs `CREATE DATABASE`, then reconnects). Requires PG user to have `CREATEDB` privilege.
 - **Migrations**: Knex.js, located at `services/<name>/migrations/`. Auto-run on service startup.
 - **Schema prefix**: All tables are qualified with schema name (e.g., `broker.connections`, `market.ohlcv_daily`).
 - **Naming**: snake_case for columns. Timestamps: `created_at`, `updated_at`. UUIDs for primary keys.
 - **Repository pattern**: Each service has `src/repositories/` with typed query methods.
 
+| Service | Database | Schemas |
+|---------|----------|---------|
+| auth-service | auth_db | auth, users |
+| trading-service | trading_db | broker, portfolio |
+| market-service | market_db | market, recommendations |
+| engagement-service | engagement_db | alerts, notifications |
+
 ## Key Config / Environment Variables
 
 Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 
-- `ANGEL_ONE_API_KEY` — SmartAPI key (required, secret)
-- `ANGEL_ONE_API_URL` — Base URL without `/rest` suffix (default: `https://apiconnect.angelone.in`)
-- `ANGEL_ONE_SCRIP_MASTER_URL` — Symbol master JSON (default: `https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json`)
+- `UPSTOX_CLIENT_ID` — Upstox OAuth app client ID (required, secret)
+- `UPSTOX_CLIENT_SECRET` — Upstox OAuth app client secret (required, secret)
+- `UPSTOX_REDIRECT_URI` — OAuth callback URL (default: `http://localhost:3000/v1/broker/callback/upstox`)
 - `BROKER_TOKEN_ENCRYPTION_KEY` — 32-byte hex for AES encryption of broker tokens
 - `JWT_SECRET` — Secret for signing JWTs (auth-service + api-gateway)
 - `REDIS_URL` — Redis connection string
-- `DB_HOST/PORT/NAME/USER/PASSWORD` — PostgreSQL connection
+- `DB_HOST/PORT/NAME/USER/PASSWORD` — PostgreSQL connection (DB_NAME differs per service)
 
-## Angel One SmartAPI Integration
+## Upstox API Integration
 
-- **Client**: `services/trading-service/src/broker/angelone.client.ts`
-- **Auth flow**: `POST /rest/auth/angelbroking/user/v1/loginByPassword` with clientcode + password + TOTP
-- **Market quotes**: `POST /rest/secure/angelbroking/market/v1/quote` with `exchangeTokens: { NSE: [token] }`
-- **Symbol master**: Downloaded from ScripMaster JSON URL, stored in `broker.symbol_master` table
-- **Token format**: Angel One uses numeric token IDs (e.g., "2885" for RELIANCE). Must map symbol name → token before any API call.
-- **Session**: Access tokens expire in ~24h. Refresh via `/rest/auth/angelbroking/jwt/v1/generateTokens`.
+- **OAuth flow**: User visits authorization URL → logs in on Upstox → redirected to `/v1/broker/callback/upstox?code=...&state=userId` → backend exchanges code for access_token → stored encrypted in DB
+- **Auth service**: `services/trading-service/src/broker/upstox-auth.service.ts`
+- **API client**: `services/trading-service/src/broker/upstox.client.ts` — all methods take `accessToken` param, token is always fetched from DB at call time (never from env)
+- **Instrument master**: CSV download from Upstox public endpoint, stored in `broker.symbol_master` table. Instrument key format: `NSE_EQ|{symbol}`.
+- **Session**: Access tokens are daily — expire end-of-trading-day. No silent refresh; user re-authorizes each day.
+- **Onboarding**: After registration, user must connect broker before accessing trading features. Frontend checks `GET /v1/broker/status`.
 
 ## Code Style
 
@@ -134,10 +142,11 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 
 ## Common Gotchas
 
-- The `apiUrl` config for Angel One should NOT include `/rest` — the client code appends `/rest/...` to all endpoints.
 - Internal service-to-service URLs must NOT use the API gateway prefix (`/v1/broker/...`). Use the direct route path.
-- Symbol master must be synced before market quotes or order placement can work. Auto-syncs on trading-service startup if stale.
-- Broker credentials are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `services/trading-service/src/utils/encryption.ts`.
+- Instrument master must be synced before market quotes or order placement can work. Auto-syncs if stale when a symbol lookup misses.
+- Broker tokens (Upstox access_token) are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `services/trading-service/src/utils/encryption.ts`.
+- Upstox tokens expire daily (end-of-trading-day). No refresh flow — user re-authorizes each trading day via OAuth.
+- The `GET /v1/broker/callback/upstox` route is an OAuth redirect target — it receives `code` + `state` from Upstox, not from the frontend.
 - `portfolio.service.ts` calls `brokerService.getConnections()` and `brokerService.getHoldings()` directly (no HTTP). Market data uses HTTP to `market-service`.
 - trading-service domain layout: `src/broker/` owns broker/orders/paper-trading, `src/portfolio/` owns holdings/watchlists. Both wired via DI in `server.ts`.
 - market-service domain layout: `src/market/` owns quotes/OHLCV/indicators/WebSocket, `src/recommendations/` owns signals/scheduling. `SignalGeneratorService` receives `MarketDataService` via constructor — no HTTP for historical data.

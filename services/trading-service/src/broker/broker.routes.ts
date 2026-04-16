@@ -7,31 +7,33 @@ import { MarketController } from './market.controller';
 
 const router = Router();
 
-// ─── Real-time market data (Angel One) ──────────────────────────────────────
+// ─── Upstox OAuth flow ──────────────────────────────────────────────────────
+router.get('/broker/status', BrokerController.getStatus);
+router.get('/broker/connect/upstox', BrokerController.connectUpstox);
+router.get('/broker/callback/upstox', BrokerController.callbackUpstox);
+
+// ─── Real-time market data (via Upstox) ─────────────────────────────────────
 router.get('/market/quote/:exchange/:symbol', MarketController.getQuote);
 
-// ─── Broker connection management ────────────────────────────────────────────
-router.post('/connect', BrokerController.connect);
+// ─── Broker connection management ───────────────────────────────────────────
 router.delete('/disconnect/:connectionId', BrokerController.disconnect);
 router.get('/connections', BrokerController.getConnections);
 router.patch('/connections/:connectionId/toggle', BrokerController.toggle);
 router.get('/holdings/:connectionId', BrokerController.getHoldings);
-router.get('/feed-tokens', BrokerController.getFeedTokens);
-router.get('/feed-tokens/active', BrokerController.getActiveFeedTokens);
 
-// ─── Order management ────────────────────────────────────────────────────────
+// ─── Order management ───────────────────────────────────────────────────────
 router.post('/orders', OrderController.placeOrder);
 router.get('/orders', OrderController.getOrders);
 router.get('/orders/stats', OrderController.getOrderStats);
 router.get('/orders/:orderId', OrderController.getOrder);
 router.delete('/orders/:orderId/cancel', OrderController.cancelOrder);
 
-// ─── Symbol master ───────────────────────────────────────────────────────────
+// ─── Symbol / instrument master ─────────────────────────────────────────────
 router.get('/symbols/search', SymbolController.search);
 router.get('/symbols/:exchange/:symbol', SymbolController.getSymbol);
 router.post('/symbols/sync', SymbolController.syncMaster);
 
-// ─── Paper trading ───────────────────────────────────────────────────────────
+// ─── Paper trading ──────────────────────────────────────────────────────────
 router.get('/paper/balance', PaperController.getBalance);
 router.get('/paper/positions', PaperController.getPositions);
 router.post('/paper/reset', PaperController.reset);

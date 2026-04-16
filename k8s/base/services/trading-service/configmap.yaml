@@ -8,10 +8,9 @@ data:
   NODE_ENV: production
   DB_HOST: postgres-service.database.svc.cluster.local
   DB_PORT: "5432"
-  DB_NAME: asset_management
+  DB_NAME: trading_db
   DB_USER: admin
   REDIS_URL: redis://redis-service:6379
   AUTH_SERVICE_URL: http://auth-service
   MARKET_SERVICE_URL: http://market-service
-  ANGEL_ONE_API_URL: https://apiconnect.angelone.in
-  ANGEL_ONE_SCRIP_MASTER_URL: https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json
+  UPSTOX_REDIRECT_URI: http://api-gateway/v1/broker/callback/upstox

@@ -7,7 +7,7 @@ export const config = {
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'asset_platform',
+    database: process.env.DB_NAME || 'trading_db',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
   },
@@ -17,10 +17,14 @@ export const config = {
   encryption: {
     key: process.env.BROKER_TOKEN_ENCRYPTION_KEY || '',
   },
-  angelOne: {
-    apiKey: process.env.ANGEL_ONE_API_KEY || '',
-    apiUrl: process.env.ANGEL_ONE_API_URL || 'https://apiconnect.angelone.in',
-    scripMasterUrl: process.env.ANGEL_ONE_SCRIP_MASTER_URL || 'https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json',
+  upstox: {
+    clientId: process.env.UPSTOX_CLIENT_ID || '',
+    clientSecret: process.env.UPSTOX_CLIENT_SECRET || '',
+    redirectUri: process.env.UPSTOX_REDIRECT_URI || 'http://localhost:3000/v1/broker/callback/upstox',
+    apiUrl: 'https://api.upstox.com/v2',
+    authUrl: 'https://api.upstox.com/v2/login/authorization/dialog',
+    tokenUrl: 'https://api.upstox.com/v2/login/authorization/token',
+    instrumentUrl: 'https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz',
   },
   authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
   marketServiceUrl: process.env.MARKET_SERVICE_URL || 'http://localhost:3004',
