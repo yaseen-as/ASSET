@@ -21,6 +21,7 @@ import OrderPage from '@/features/orders/pages/OrderPage';
 import PaperTradingPage from '@/features/paper-trading/pages/PaperTradingPage';
 import AnalyticsPage from '@/features/analytics/pages/AnalyticsPage';
 import BrokerPage from '@/features/broker/pages/BrokerPage';
+import BrokerConnectedPage from '@/features/broker/pages/BrokerConnectedPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/paper-trading" element={<PaperTradingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/broker" element={<BrokerPage />} />
+        <Route path="/broker/connected" element={<BrokerConnectedPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

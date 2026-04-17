@@ -132,6 +132,16 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 - **Session**: Access tokens are daily — expire end-of-trading-day. No silent refresh; user re-authorizes each day.
 - **Onboarding**: After registration, user must connect broker before accessing trading features. Frontend checks `GET /v1/broker/status`.
 
+## Frontend Sync Rule
+
+**Always update the frontend when making backend changes.** Any time you add, modify, or remove API routes, request/response shapes, authentication flows, or service behavior, also update the corresponding frontend code in `frontend/src/`. This includes:
+- API call sites in feature pages and stores
+- TypeScript interfaces that mirror backend response shapes
+- UI flows that reflect new or changed endpoint behavior (e.g. OAuth redirects, new form fields, removed form fields)
+- New routes in `App.tsx` if a backend redirect target is added
+
+Do not consider a backend task complete until the frontend reflects the change.
+
 ## Code Style
 
 - TypeScript strict mode across all packages

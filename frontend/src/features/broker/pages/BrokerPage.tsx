@@ -8,8 +8,6 @@ import { cn } from '@/lib/utils';
 import {
   Link2,
   Unplug,
-  ToggleLeft,
-  ToggleRight,
   RefreshCw,
   Activity,
   TrendingUp,
@@ -17,22 +15,26 @@ import {
   CheckCircle2,
   Wifi,
   WifiOff,
+  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-interface BrokerConnection {
-  id: string;
-  brokerName?: string;
-  broker_name?: string;
-  clientId?: string;
-  client_id?: string;
-  isActive?: boolean;
-  is_active?: boolean;
-  connectedAt?: string;
-  connected_at?: string;
+interface BrokerStatus {
+  connected: boolean;
+  broker: string | null;
+  expiresAt: string | null;
 }
 
-// Show live prices for user's holdings after broker sync
+interface BrokerConnection {
+  id: string;
+  broker_name: string;
+  broker_user_id: string;
+  is_active: boolean;
+  created_at: string;
+  expires_at: string | null;
+}
+
 const QUICK_SYMBOLS = [
   'NSE:RELIANCE',
   'NSE:INFY',
@@ -42,24 +44,28 @@ const QUICK_SYMBOLS = [
 ];
 
 export default function BrokerPage() {
+  const [status, setStatus] = useState<BrokerStatus | null>(null);
   const [connections, setConnections] = useState<BrokerConnection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const { holdings, fetchHoldings } = usePortfolioStore();
 
-  // Build symbol list from holdings for live tracking
   const holdingSymbols = holdings.length > 0
     ? holdings.slice(0, 10).map((h) => `${h.exchange}:${h.symbol}`)
     : QUICK_SYMBOLS;
   const { ticks, connected: wsConnected } = useMarketTicks(holdingSymbols);
 
-  // Connect form
-  const [clientId, setClientId] = useState('');
-  const [password, setPassword] = useState('');
-  const [totp, setTotp] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const fetchStatus = async () => {
+    try {
+      const { data } = await api.get('/broker/status');
+      setStatus(data.data);
+    } catch {
+      setStatus({ connected: false, broker: null, expiresAt: null });
+    }
+  };
 
   const fetchConnections = async () => {
     setIsLoading(true);
@@ -72,31 +78,21 @@ export default function BrokerPage() {
   };
 
   useEffect(() => {
+    fetchStatus();
     fetchConnections();
     fetchHoldings();
   }, []);
 
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConnectUpstox = async () => {
+    setConnecting(true);
     try {
-      await api.post('/broker/connect', {
-        brokerName: 'angel_one',
-        clientId,
-        password,
-        totp,
-        apiKey,
-      });
-      toast.success('Broker connected! Syncing holdings…');
-      setClientId('');
-      setPassword('');
-      setTotp('');
-      setApiKey('');
-      fetchConnections();
-
-      // Auto-sync holdings after connecting
-      handleSync();
+      const { data } = await api.get('/broker/connect/upstox');
+      const authUrl: string = data.data.authUrl;
+      // Redirect current tab — backend will redirect back to /broker/connected after auth
+      window.location.href = authUrl;
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Connection failed');
+      toast.error(err.response?.data?.error?.message || 'Failed to start Upstox authorization');
+      setConnecting(false);
     }
   };
 
@@ -111,7 +107,6 @@ export default function BrokerPage() {
       fetchHoldings();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Sync failed');
-      setSyncResult(null);
     } finally {
       setSyncing(false);
     }
@@ -121,26 +116,23 @@ export default function BrokerPage() {
     try {
       await api.delete(`/broker/disconnect/${id}`);
       toast.success('Disconnected');
+      fetchStatus();
       fetchConnections();
     } catch {
       toast.error('Failed to disconnect');
     }
   };
 
-  const handleToggle = async (id: string, currentState: boolean) => {
-    try {
-      await api.patch(`/broker/connections/${id}/toggle`, { isActive: !currentState });
-      fetchConnections();
-    } catch {
-      toast.error('Failed to toggle');
-    }
+  const isExpiringSoon = (expiresAt: string | null): boolean => {
+    if (!expiresAt) return false;
+    const msLeft = new Date(expiresAt).getTime() - Date.now();
+    return msLeft > 0 && msLeft < 2 * 60 * 60 * 1000; // within 2 hours
   };
 
-  const hasActiveConnection = connections.some((c) => c.isActive ?? c.is_active);
-  const getBrokerName = (c: BrokerConnection) => c.brokerName ?? c.broker_name ?? 'Unknown';
-  const getClientId = (c: BrokerConnection) => c.clientId ?? c.client_id ?? '****';
-  const getIsActive = (c: BrokerConnection) => c.isActive ?? c.is_active ?? false;
-  const getConnectedAt = (c: BrokerConnection) => c.connectedAt ?? c.connected_at;
+  const isExpired = (expiresAt: string | null): boolean => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
 
   return (
     <div className="space-y-6">
@@ -177,39 +169,11 @@ export default function BrokerPage() {
         </div>
       </div>
 
-      {/* Connect Form */}
-      {!hasActiveConnection && (
-        <form onSubmit={handleConnect} className="card space-y-4">
-          <h2 className="text-lg font-semibold">Connect Angel One</h2>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label">Client ID</label>
-              <input className="input" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="AB1234" required />
-            </div>
-            <div>
-              <label className="label">API Key</label>
-              <input className="input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Your Angel One API key" required />
-            </div>
-            <div>
-              <label className="label">Password</label>
-              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
-            <div>
-              <label className="label">TOTP</label>
-              <input className="input" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="6-digit TOTP" required />
-            </div>
-          </div>
-
-          <button type="submit" className="btn-primary">Connect</button>
-        </form>
-      )}
-
-      {/* Existing Connections */}
-      <div className="card">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Connected Brokers</h2>
-          {hasActiveConnection && (
+      {/* Upstox Connection Status */}
+      <div className="card space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Upstox Account</h2>
+          {status?.connected && (
             <button
               onClick={handleSync}
               disabled={syncing}
@@ -222,52 +186,123 @@ export default function BrokerPage() {
         </div>
 
         {syncResult && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-900/20 p-3 text-sm text-green-400">
+          <div className="flex items-center gap-2 rounded-lg bg-green-900/20 p-3 text-sm text-green-400">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             {syncResult}
           </div>
         )}
 
-        {isLoading ? (
-          <p className="text-gray-500">Loading…</p>
-        ) : connections.length === 0 ? (
-          <p className="text-gray-500">No broker connections yet. Connect above to start tracking.</p>
-        ) : (
+        {status === null ? (
+          <p className="text-gray-500 text-sm">Checking connection status…</p>
+        ) : status.connected ? (
           <div className="space-y-3">
-            {connections.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-800/50 p-4">
-                <div>
-                  <p className="font-medium capitalize">{getBrokerName(c).replace('_', ' ')}</p>
-                  <p className="text-sm text-gray-400">Client: {getClientId(c)}</p>
-                  {getConnectedAt(c) && (
-                    <p className="text-xs text-gray-500">Connected: {new Date(getConnectedAt(c)!).toLocaleString()}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={cn(
-                    'rounded-full px-2 py-0.5 text-xs font-medium',
-                    getIsActive(c) ? 'bg-green-900/30 text-green-400' : 'bg-gray-700 text-gray-400'
-                  )}>
-                    {getIsActive(c) ? 'Active' : 'Inactive'}
-                  </span>
-                  <button onClick={() => handleToggle(c.id, getIsActive(c))} title={getIsActive(c) ? 'Disable' : 'Enable'}>
-                    {getIsActive(c) ? (
-                      <ToggleRight className="h-6 w-6 text-green-400" />
-                    ) : (
-                      <ToggleLeft className="h-6 w-6 text-gray-500" />
-                    )}
-                  </button>
-                  <button onClick={() => handleDisconnect(c.id)} className="text-gray-500 hover:text-red-400" title="Disconnect">
-                    <Unplug className="h-5 w-5" />
-                  </button>
-                </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-400">
+                Connected
+              </span>
+              <span className="text-sm text-gray-400 capitalize">{status.broker}</span>
+            </div>
+
+            {status.expiresAt && (
+              <div className={cn(
+                'flex items-center gap-2 rounded-lg p-3 text-sm',
+                isExpiringSoon(status.expiresAt)
+                  ? 'bg-yellow-900/20 text-yellow-400'
+                  : 'bg-gray-800/50 text-gray-400',
+              )}>
+                {isExpiringSoon(status.expiresAt) && <AlertTriangle className="h-4 w-4 shrink-0" />}
+                <span>
+                  Session expires: {new Date(status.expiresAt).toLocaleString()}
+                  {isExpiringSoon(status.expiresAt) && ' — Re-authorize soon'}
+                </span>
               </div>
-            ))}
+            )}
+
+            <p className="text-xs text-gray-500">
+              Upstox tokens are valid until end of each trading day. Re-authorize daily via the button below.
+            </p>
+
+            <button
+              onClick={handleConnectUpstox}
+              disabled={connecting}
+              className="flex items-center gap-2 rounded-lg border border-brand-600/40 bg-brand-600/10 px-4 py-2 text-sm font-medium text-brand-400 hover:bg-brand-600/20 disabled:opacity-50"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {connecting ? 'Redirecting…' : 'Re-authorize with Upstox'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {status.expiresAt && isExpired(status.expiresAt) && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-900/20 p-3 text-sm text-red-400">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Your previous session expired. Please re-authorize to continue trading.
+              </div>
+            )}
+            <p className="text-sm text-gray-400">
+              Connect your Upstox account via OAuth to access real-time market data, place orders, and sync your portfolio.
+            </p>
+            <button
+              onClick={handleConnectUpstox}
+              disabled={connecting}
+              className="btn-primary flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              {connecting ? 'Redirecting to Upstox…' : 'Connect with Upstox'}
+            </button>
           </div>
         )}
       </div>
 
-      {/* Live Holdings Preview (after sync) */}
+      {/* Connection List */}
+      {connections.length > 0 && (
+        <div className="card">
+          <h2 className="mb-4 text-lg font-semibold">Connection History</h2>
+          {isLoading ? (
+            <p className="text-gray-500 text-sm">Loading…</p>
+          ) : (
+            <div className="space-y-3">
+              {connections.map((c) => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-800/50 p-4">
+                  <div>
+                    <p className="font-medium capitalize">{c.broker_name.replace('_', ' ')}</p>
+                    <p className="text-sm text-gray-400">User: {c.broker_user_id}</p>
+                    <p className="text-xs text-gray-500">
+                      Connected: {new Date(c.created_at).toLocaleString()}
+                    </p>
+                    {c.expires_at && (
+                      <p className={cn(
+                        'text-xs',
+                        isExpired(c.expires_at) ? 'text-red-400' : 'text-gray-500',
+                      )}>
+                        {isExpired(c.expires_at) ? 'Expired: ' : 'Expires: '}
+                        {new Date(c.expires_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      'rounded-full px-2 py-0.5 text-xs font-medium',
+                      c.is_active ? 'bg-green-900/30 text-green-400' : 'bg-gray-700 text-gray-400',
+                    )}>
+                      {c.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    <button
+                      onClick={() => handleDisconnect(c.id)}
+                      className="text-gray-500 hover:text-red-400"
+                      title="Disconnect"
+                    >
+                      <Unplug className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Live Holdings Preview */}
       {holdings.length > 0 && (
         <div className="card">
           <div className="mb-4 flex items-center justify-between">
