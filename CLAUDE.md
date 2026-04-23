@@ -161,4 +161,5 @@ Do not consider a backend task complete until the frontend reflects the change.
 - trading-service domain layout: `src/broker/` owns broker/orders/paper-trading, `src/portfolio/` owns holdings/watchlists. Both wired via DI in `server.ts`.
 - market-service domain layout: `src/market/` owns quotes/OHLCV/indicators/WebSocket, `src/recommendations/` owns signals/scheduling. `SignalGeneratorService` receives `MarketDataService` via constructor — no HTTP for historical data.
 - Signal scheduler runs every 4 hours; on startup, skips if signals exist within last 20h.
+- When deleting a service file, grep the entire service for imports of that file (`grep -r 'deleted-file-name'`) before removing it — missed imports won't surface until runtime (`Cannot find module`).
 - The frontend at `localhost:5173` proxies API calls to `localhost:3000` (gateway). In K8s, ingress handles this.

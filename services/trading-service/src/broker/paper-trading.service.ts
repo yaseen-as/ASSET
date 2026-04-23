@@ -2,7 +2,7 @@ import axios from 'axios';
 import Redis from 'ioredis';
 import { db } from '../config/database';
 import { OrderRepository } from './order.repository';
-import { SymbolMasterService } from './symbol-master.service';
+import { UpstoxInstrumentService } from './upstox-instrument.service';
 import { config } from '../config';
 import type { OrderResponse } from '@platform/shared';
 
@@ -26,7 +26,7 @@ const DEFAULT_CASH = 1_000_000; // ₹10,00,000
 
 export class PaperTradingService {
   private orderRepo = new OrderRepository();
-  private symbolMaster = new SymbolMasterService();
+  private symbolMaster = new UpstoxInstrumentService();
   private redis: Redis;
   private redisPub: Redis;
 
@@ -36,7 +36,7 @@ export class PaperTradingService {
   }
 
   async placePaperOrder(userId: string, dto: PlacePaperOrderDTO): Promise<OrderResponse> {
-    const symbolInfo = await this.symbolMaster.resolveToken(dto.symbol, dto.exchange);
+    const symbolInfo = await this.symbolMaster.resolveInstrument(dto.symbol, dto.exchange);
     if (!symbolInfo) {
       throw new Error(`Symbol not found: ${dto.exchange}:${dto.symbol}`);
     }

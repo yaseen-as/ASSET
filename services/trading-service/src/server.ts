@@ -2,13 +2,13 @@ import { app } from './app';
 import { config } from './config';
 import { initDatabase } from './config/database';
 import { OrderTracker } from './workers/order-tracker';
-import { SymbolMasterService } from './broker/symbol-master.service';
+import { UpstoxInstrumentService } from './broker/upstox-instrument.service';
 import { BrokerService } from './broker/broker.service';
 import { PortfolioService } from './portfolio/portfolio.service';
 import { initPortfolioController } from './portfolio/portfolio.controller';
 
 const orderTracker = new OrderTracker();
-const symbolMaster = new SymbolMasterService();
+const symbolMaster = new UpstoxInstrumentService();
 
 async function start() {
   try {

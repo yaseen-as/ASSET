@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import { OrderRepository } from '../broker/order.repository';
 import { BrokerConnectionRepository } from '../broker/broker.repository';
-import { AngelOneClient } from '../broker/angelone.client';
+import { getOrderBook } from '../broker/upstox.client';
 import { decrypt } from '../utils/encryption';
 import { config } from '../config';
 
@@ -9,7 +9,6 @@ export class OrderTracker {
   private interval: NodeJS.Timeout | null = null;
   private orderRepo = new OrderRepository();
   private brokerRepo = new BrokerConnectionRepository();
-  private angelOne = new AngelOneClient();
   private redisPub: Redis;
 
   constructor() {
@@ -41,21 +40,21 @@ export class OrderTracker {
 
         try {
           const accessToken = decrypt(conn.access_token);
-          const orderBook = await this.angelOne.getOrderBook(accessToken);
+          const orderBook = await getOrderBook(accessToken);
 
           for (const order of orders) {
-            const brokerOrder = orderBook.find((o: any) => o.orderid === order.broker_order_id);
+            const brokerOrder = orderBook.find((o: any) => o.order_id === order.broker_order_id);
             if (!brokerOrder) continue;
 
-            const newStatus = this.mapStatus(brokerOrder.orderstatus || brokerOrder.status || '');
+            const newStatus = this.mapStatus(brokerOrder.status || '');
             if (newStatus === order.status) continue;
 
             await this.orderRepo.updateStatus(order.id, {
               status: newStatus,
-              filled_quantity: parseInt(brokerOrder.filledshares || brokerOrder.fillquantity || '0', 10),
-              avg_fill_price: parseFloat(brokerOrder.averageprice || '0') || undefined,
+              filled_quantity: brokerOrder.filled_quantity || 0,
+              avg_fill_price: brokerOrder.average_price || undefined,
               filled_at: newStatus === 'EXECUTED' ? new Date() : undefined,
-              rejection_reason: brokerOrder.text || brokerOrder.rejectionreason || undefined,
+              rejection_reason: brokerOrder.status_message || undefined,
             });
 
             if (newStatus === 'EXECUTED') {
@@ -65,15 +64,15 @@ export class OrderTracker {
                 symbol: order.symbol,
                 exchange: order.exchange,
                 action: order.action,
-                quantity: parseInt(brokerOrder.filledshares || String(order.quantity), 10),
-                price: parseFloat(brokerOrder.averageprice || '0'),
+                quantity: brokerOrder.filled_quantity || order.quantity,
+                price: brokerOrder.average_price || 0,
               }));
             } else if (newStatus === 'REJECTED') {
               await this.redisPub.publish('order:rejected', JSON.stringify({
                 userId: order.user_id,
                 orderId: order.id,
                 symbol: order.symbol,
-                reason: brokerOrder.text || 'Rejected by exchange',
+                reason: brokerOrder.status_message || 'Rejected by exchange',
               }));
             }
           }
@@ -86,22 +85,22 @@ export class OrderTracker {
     }
   }
 
-  private mapStatus(angelStatus: string): string {
+  private mapStatus(upstoxStatus: string): string {
     const map: Record<string, string> = {
       'open': 'OPEN',
-      'pending': 'OPEN',
-      'trigger pending': 'OPEN',
-      'open pending': 'OPEN',
       'complete': 'EXECUTED',
-      'traded': 'EXECUTED',
       'cancelled': 'CANCELLED',
       'rejected': 'REJECTED',
-      'after market order req received': 'AMO_SUBMITTED',
+      'validation pending': 'OPEN',
+      'put order req received': 'OPEN',
+      'modify validation pending': 'OPEN',
       'modify pending': 'OPEN',
-      'not cancelled': 'OPEN',
+      'trigger pending': 'OPEN',
       'not modified': 'OPEN',
+      'not cancelled': 'OPEN',
+      'after market order req received': 'AMO_SUBMITTED',
     };
-    return map[angelStatus.toLowerCase()] || 'OPEN';
+    return map[upstoxStatus.toLowerCase()] || 'OPEN';
   }
 
   async stop(): Promise<void> {
