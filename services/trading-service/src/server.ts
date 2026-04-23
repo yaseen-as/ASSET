@@ -33,6 +33,8 @@ async function start() {
           console.error('[Trading] Symbol master sync failed (non-fatal):', err.message);
         }
       }
+    }).catch((err: any) => {
+      console.error('[Trading] Symbol master stale-check failed:', err.message);
     });
 
     app.listen(config.port, () => {

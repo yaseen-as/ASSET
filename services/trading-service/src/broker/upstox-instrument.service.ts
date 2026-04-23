@@ -59,39 +59,54 @@ export class UpstoxInstrumentService {
       csvText = Buffer.from(response.data).toString('utf-8');
     }
 
-    const lines = csvText.split('\n');
-    const header = lines[0]?.split(',') || [];
+    // CSV fields are all double-quoted — strip surrounding quotes from every cell
+    const unquote = (s: string) => s.replace(/^"|"$/g, '').trim();
+    const parseLine = (line: string) => line.split(',').map(unquote);
+
+    const lines = csvText.split('\n').map((l) => l.trimEnd());
+    const header = parseLine(lines[0] || '');
 
     const col = (name: string) => header.indexOf(name);
+
     const iKey = col('instrument_key');
     const iExch = col('exchange');
     const iSymbol = col('tradingsymbol');
-    const iName = col('name');
     const iType = col('instrument_type');
     const iLot = col('lot_size');
     const iTick = col('tick_size');
-    const iIsin = col('isin');
     const iExpiry = col('expiry');
     const iStrike = col('strike');
+
+
+    const INSTRUMENT_TYPE_MAP: Record<string, string> = {
+      EQUITY: 'EQ', EQ: 'EQ',
+      FUTIDX: 'FUT', FUTSTK: 'FUT', FUTCOM: 'FUT',
+      OPTIDX: 'OPT', OPTSTK: 'OPT',
+    };
 
     const rows: Partial<SymbolRow>[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
+      const cols = parseLine(lines[i]);
       if (cols.length < header.length) continue;
 
-      const exchange = cols[iExch]?.replace('_EQ', '').replace('_FO', '');
-      if (!exchange || (exchange !== 'NSE' && exchange !== 'BSE')) continue;
+      const rawExchange = cols[iExch] || '';
+      if (!rawExchange.endsWith('_EQ')) continue;
+      const exchange = rawExchange.replace(/_EQ$/, '');
+      if (exchange !== 'NSE' && exchange !== 'BSE') continue;
 
-      const symbolName = (cols[iName] || cols[iSymbol] || '').replace(/-EQ$/i, '');
-      if (!symbolName) continue;
+      const tradingSymbol = (cols[iSymbol] || '').replace(/-EQ$/i, '');
+      if (!tradingSymbol) continue;
+
+      const rawType = cols[iType] || 'EQ';
+      const instrumentType = INSTRUMENT_TYPE_MAP[rawType] || rawType;
 
       rows.push({
-        token: cols[iKey] || '',           // Upstox instrument_key as the token
+        token: cols[iKey] || '',
         exchange,
-        symbol: symbolName,
-        trading_symbol: cols[iSymbol] || '',
-        instrument_type: cols[iType] || 'EQ',
+        symbol: tradingSymbol,
+        trading_symbol: tradingSymbol,
+        instrument_type: instrumentType,
         lot_size: parseInt(cols[iLot] || '1', 10),
         tick_size: parseFloat(cols[iTick] || '0.05'),
         expiry: cols[iExpiry] || null,

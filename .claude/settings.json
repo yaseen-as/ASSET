@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kubectl exec *)",
+      "Bash(curl -sL \"https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz\")",
+      "Bash(zcat)"
+    ]
+  }
+}
