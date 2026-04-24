@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: database
+data:
+  # Grants CREATEDB to the admin user so each service's ensureDatabase()
+  # can create its own database (trading_db, auth_db, market_db, engagement_db).
+  grant-createdb.sql: |
+    ALTER USER admin CREATEDB;
