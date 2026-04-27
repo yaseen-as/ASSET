@@ -14,10 +14,10 @@ export class NotificationService {
 
   async getNotifications(userId: string, page = 1) {
     const [notifications, unreadCount] = await Promise.all([
-      this.repo.findByUser(userId, page, config.pageSize),
+      this.repo.findByUser(userId, page, config.engagement.pageSize),
       this.repo.countUnread(userId),
     ]);
-    return { notifications, unreadCount, page, pageSize: config.pageSize };
+    return { notifications, unreadCount, page, pageSize: config.engagement.pageSize };
   }
 
   async markRead(id: string, userId: string) {

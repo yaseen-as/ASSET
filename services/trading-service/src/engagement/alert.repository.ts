@@ -1,4 +1,4 @@
-import db from '../config/database';
+import { engagementDb as db } from '../config/database';
 
 export interface AlertRow {
   id: string;

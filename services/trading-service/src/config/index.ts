@@ -11,6 +11,14 @@ export const config = {
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
   },
+  engagementDb: {
+    database: process.env.ENGAGEMENT_DB_NAME || 'engagement_db',
+  },
+  engagement: {
+    pageSize: 25,
+    alertCooldownMs: parseInt(process.env.ALERT_COOLDOWN_MS || '300000', 10),
+    alertMaxTriggerCount: parseInt(process.env.ALERT_MAX_TRIGGERS || '0', 10),
+  },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },

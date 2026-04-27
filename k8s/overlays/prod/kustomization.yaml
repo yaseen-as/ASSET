@@ -19,8 +19,6 @@ images:
     newTag: "1.0.0"
   - name: yaseenas/market-service
     newTag: "1.0.0"
-  - name: yaseenas/engagement-service
-    newTag: "1.0.0"
   - name: yaseenas/react-frontend
     newTag: "1.0.0"
 

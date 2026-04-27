@@ -19,7 +19,6 @@ export const config = {
     auth: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
     trading: process.env.TRADING_SERVICE_URL || 'http://localhost:3003',
     market: process.env.MARKET_SERVICE_URL || 'http://localhost:3004',
-    engagement: process.env.ENGAGEMENT_SERVICE_URL || 'http://localhost:3007',
   },
 
   rateLimit: {

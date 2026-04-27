@@ -1,5 +1,5 @@
-import { AlertRepository, AlertRow } from '../alerts/alert.repository';
-import { NotificationService } from '../notifications/notification.service';
+import { AlertRepository, AlertRow } from './alert.repository';
+import { NotificationService } from './notification.service';
 import { config } from '../config';
 import { createLogger } from '../utils/logger';
 
@@ -49,7 +49,7 @@ export class EvaluationEngine {
 
       if (alert.last_triggered_at) {
         const elapsed = Date.now() - new Date(alert.last_triggered_at).getTime();
-        if (elapsed < config.alertEvaluation.cooldownMs) continue;
+        if (elapsed < config.engagement.alertCooldownMs) continue;
       }
 
       const updated = await this.alertRepo.markTriggered(alert.id, tick.ltp);
@@ -72,8 +72,8 @@ export class EvaluationEngine {
       await this.notificationService.handleAlertTriggered(triggerPayload);
 
       if (
-        config.alertEvaluation.maxTriggerCount > 0 &&
-        updated.trigger_count >= config.alertEvaluation.maxTriggerCount
+        config.engagement.alertMaxTriggerCount > 0 &&
+        updated.trigger_count >= config.engagement.alertMaxTriggerCount
       ) {
         await this.alertRepo.update(alert.id, { status: 'disabled' });
         logger.info(`Alert ${alert.id} auto-disabled after ${updated.trigger_count} triggers`);

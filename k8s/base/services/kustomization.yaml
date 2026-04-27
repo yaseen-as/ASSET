@@ -6,7 +6,6 @@ resources:
   - auth-service/
   - trading-service/
   - market-service/
-  - engagement-service/
 
 # Wait for postgres before starting any backend service
 patches:

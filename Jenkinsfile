@@ -38,7 +38,7 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    def ALL_SERVICES = ['api-gateway', 'auth-service', 'trading-service', 'market-service', 'engagement-service', 'frontend']
+                    def ALL_SERVICES = ['api-gateway', 'auth-service', 'trading-service', 'market-service', 'frontend']
 
                     if (env.BRANCH_NAME == 'main') {
                         env.CHANGED_SERVICES = ALL_SERVICES.join(',')
@@ -186,7 +186,6 @@ pipeline {
                             yaseenas/auth-service:${env.APP_VERSION} \
                             yaseenas/trading-service:${env.APP_VERSION} \
                             yaseenas/market-service:${env.APP_VERSION} \
-                            yaseenas/engagement-service:${env.APP_VERSION} \
                             yaseenas/react-frontend:${env.APP_VERSION}
                         kubectl apply -k . --kubeconfig=\$KUBECONFIG
                         kubectl rollout status deployment --timeout=300s --kubeconfig=\$KUBECONFIG

@@ -1,7 +1,7 @@
-import knex from 'knex';
+import knex, { Knex } from 'knex';
 import { config } from './index';
 
-async function ensureDatabase(): Promise<void> {
+async function ensureDatabase(databaseName: string): Promise<void> {
   const admin = knex({
     client: 'pg',
     connection: {
@@ -13,8 +13,8 @@ async function ensureDatabase(): Promise<void> {
     },
   });
   try {
-    await admin.raw(`CREATE DATABASE "${config.db.database}"`);
-    console.log(`Created database "${config.db.database}"`);
+    await admin.raw(`CREATE DATABASE "${databaseName}"`);
+    console.log(`Created database "${databaseName}"`);
   } catch (err: any) {
     if (!err.message.includes('already exists')) throw err;
   } finally {
@@ -22,7 +22,7 @@ async function ensureDatabase(): Promise<void> {
   }
 }
 
-export const db = knex({
+export const db: Knex = knex({
   client: 'pg',
   connection: {
     host: config.db.host,
@@ -40,9 +40,34 @@ export const db = knex({
   },
 });
 
+export const engagementDb: Knex = knex({
+  client: 'pg',
+  connection: {
+    host: config.db.host,
+    port: config.db.port,
+    database: config.engagementDb.database,
+    user: config.db.user,
+    password: config.db.password,
+  },
+  searchPath: ['alerts', 'notifications', 'public'],
+  pool: { min: 2, max: 10 },
+  migrations: {
+    directory: './migrations-engagement',
+    schemaName: 'alerts',
+    tableName: 'knex_migrations',
+  },
+});
+
 export async function initDatabase(): Promise<void> {
-  await ensureDatabase();
+  await ensureDatabase(config.db.database);
   await db.raw('CREATE SCHEMA IF NOT EXISTS broker');
   await db.raw('CREATE SCHEMA IF NOT EXISTS portfolio');
   await db.migrate.latest();
+}
+
+export async function initEngagementDatabase(): Promise<void> {
+  await ensureDatabase(config.engagementDb.database);
+  await engagementDb.raw('CREATE SCHEMA IF NOT EXISTS alerts');
+  await engagementDb.raw('CREATE SCHEMA IF NOT EXISTS notifications');
+  await engagementDb.migrate.latest();
 }

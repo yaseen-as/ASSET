@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { brokerRoutes } from './broker/broker.routes';
 import { portfolioRoutes } from './portfolio/portfolio.routes';
+import { alertRoutes } from './engagement/alert.routes';
+import { notificationRoutes } from './engagement/notification.routes';
 import { ServiceError } from './broker/broker.service';
 import { createLogger } from './utils/logger';
 import { requestLogger } from './middleware/request-logger';
@@ -25,6 +27,10 @@ app.use('', brokerRoutes);
 
 // Portfolio domain: holdings, watchlists, broker sync
 app.use('/portfolio', portfolioRoutes);
+
+// Engagement domain: alerts + notifications (merged from engagement-service)
+app.use('/alerts', alertRoutes);
+app.use('/notifications', notificationRoutes);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
