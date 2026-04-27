@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useOrderStore, type PlaceOrderDTO } from '@/stores/order.store';
-import { useMarketTicks } from '@/hooks/useMarketTicks';
+import { useQuotes } from '@/hooks/useQuotes';
+import { usePolling } from '@/hooks/usePolling';
 import SymbolSearch, { type SymbolResult } from '@/components/SymbolSearch';
 import { cn, formatINR } from '@/lib/utils';
 import api from '@/lib/api';
@@ -47,7 +48,7 @@ export default function OrderPage() {
 
   // Live tick for selected symbol
   const tickSymbols = useMemo(() => (symbol && exchange ? [`${exchange}:${symbol}`] : []), [symbol, exchange]);
-  const { ticks } = useMarketTicks(tickSymbols);
+  const { ticks } = useQuotes(tickSymbols, 5000);
   const currentTick = symbol && exchange ? ticks[`${exchange}:${symbol}`] : null;
 
   useEffect(() => {
@@ -56,6 +57,20 @@ export default function OrderPage() {
     loadTradingMode();
     loadConnection();
   }, []);
+
+  const hasPending = useMemo(
+    () => orders.some((o) => ['PLACED', 'OPEN', 'PARTIALLY_FILLED', 'AMO_SUBMITTED'].includes(o.status)),
+    [orders],
+  );
+
+  usePolling(
+    () => {
+      fetchOrders(page, { status: filterStatus || undefined });
+      fetchStats();
+    },
+    30_000,
+    { enabled: hasPending, immediate: false },
+  );
 
   const loadTradingMode = async () => {
     try {

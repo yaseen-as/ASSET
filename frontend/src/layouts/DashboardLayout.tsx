@@ -12,12 +12,12 @@ import {
   X,
   Activity,
   ShoppingCart,
-  BarChart3,
   FileText,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
-import { useNotificationStore } from '@/stores/notification.store';
+import { usePolling } from '@/hooks/usePolling';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -29,17 +29,27 @@ const navItems = [
   { to: '/recommendations', label: 'Signals', icon: Lightbulb },
   { to: '/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/paper-trading', label: 'Paper Trading', icon: FileText },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/broker', label: 'Broker', icon: Link2 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
-  const unread = useNotificationStore((s) => s.unreadCount);
   const navigate = useNavigate();
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const { data } = await api.get('/notifications', { params: { page: 1 } });
+      setUnread(data?.data?.unreadCount ?? 0);
+    } catch {
+      // ignore — dashboard layout shouldn't crash on notification fetch failure
+    }
+  }, []);
+
+  usePolling(fetchUnread, 30_000);
 
   const handleLogout = () => {
     logout();

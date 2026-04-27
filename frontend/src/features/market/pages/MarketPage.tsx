@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMarketTicks } from '@/hooks/useMarketTicks';
+import { useQuotes } from '@/hooks/useQuotes';
 import { formatINR, formatPercent } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Wifi, WifiOff, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // The 10 tracked symbols from the Phase 1 plan
@@ -19,7 +19,7 @@ const TRACKED_SYMBOLS = [
 ];
 
 export default function MarketPage() {
-  const { ticks, connected } = useMarketTicks(TRACKED_SYMBOLS);
+  const { ticks } = useQuotes(TRACKED_SYMBOLS, 5000);
 
   // Flash state: track which symbols just changed price
   const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down' | null>>({});
@@ -49,30 +49,13 @@ export default function MarketPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="h-6 w-6 text-brand-400" />
-          <h1 className="text-2xl font-bold">Market</h1>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          {connected ? (
-            <>
-              <Wifi className="h-4 w-4 text-green-400" />
-              <span className="text-green-400">Live</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4 text-yellow-400" />
-              <span className="text-yellow-400">Polling</span>
-            </>
-          )}
-        </div>
+      <div className="flex items-center gap-2">
+        <Activity className="h-6 w-6 text-brand-400" />
+        <h1 className="text-2xl font-bold">Market</h1>
       </div>
 
       <p className="text-sm text-gray-500">
-        {connected
-          ? 'Receiving real-time ticks via WebSocket.'
-          : 'Fetching quotes every 3 s. Run kubectl port-forward svc/market-data-service 3014:3014 for live WebSocket.'}
+        Quotes refresh every 5 seconds while this tab is visible.
       </p>
 
       <div className="card overflow-x-auto">

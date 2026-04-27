@@ -2,19 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '@/lib/api';
 import { usePortfolioStore } from '@/stores/portfolio.store';
-import { useMarketTicks } from '@/hooks/useMarketTicks';
 import { formatINR, formatPercent } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import {
   Link2,
   Unplug,
   RefreshCw,
-  Activity,
   TrendingUp,
   TrendingDown,
   CheckCircle2,
-  Wifi,
-  WifiOff,
   AlertTriangle,
   ExternalLink,
 } from 'lucide-react';
@@ -35,14 +31,6 @@ interface BrokerConnection {
   expires_at: string | null;
 }
 
-const QUICK_SYMBOLS = [
-  'NSE:RELIANCE',
-  'NSE:INFY',
-  'NSE:TCS',
-  'NSE:HDFCBANK',
-  'NSE:SBIN',
-];
-
 export default function BrokerPage() {
   const [status, setStatus] = useState<BrokerStatus | null>(null);
   const [connections, setConnections] = useState<BrokerConnection[]>([]);
@@ -52,11 +40,6 @@ export default function BrokerPage() {
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const { holdings, fetchHoldings } = usePortfolioStore();
-
-  const holdingSymbols = holdings.length > 0
-    ? holdings.slice(0, 10).map((h) => `${h.exchange}:${h.symbol}`)
-    : QUICK_SYMBOLS;
-  const { ticks, connected: wsConnected } = useMarketTicks(holdingSymbols);
 
   const fetchStatus = async () => {
     try {
@@ -139,34 +122,6 @@ export default function BrokerPage() {
       <div className="flex items-center gap-2">
         <Link2 className="h-6 w-6 text-brand-400" />
         <h1 className="text-2xl font-bold">Broker Integration</h1>
-      </div>
-
-      {/* Market Data Status */}
-      <div className="card flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-brand-400" />
-          <div>
-            <p className="text-sm font-medium">Market Data Feed</p>
-            <p className="text-xs text-gray-500">
-              {wsConnected
-                ? 'Live WebSocket connection active'
-                : 'Polling for market quotes every 3s'}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {wsConnected ? (
-            <Wifi className="h-4 w-4 text-green-400" />
-          ) : (
-            <WifiOff className="h-4 w-4 text-yellow-400" />
-          )}
-          <span className={cn('text-sm font-medium', wsConnected ? 'text-green-400' : 'text-yellow-400')}>
-            {wsConnected ? 'Live' : 'Polling'}
-          </span>
-          <Link to="/market" className="ml-2 text-xs text-brand-400 hover:text-brand-300">
-            View Market →
-          </Link>
-        </div>
       </div>
 
       {/* Upstox Connection Status */}
@@ -325,8 +280,7 @@ export default function BrokerPage() {
               <tbody>
                 {holdings.slice(0, 5).map((h) => {
                   const key = `${h.exchange}:${h.symbol}`;
-                  const liveTick = ticks[key];
-                  const ltp = liveTick?.ltp ?? h.currentPrice;
+                  const ltp = h.currentPrice;
                   const pnl = (ltp - h.avgPrice) * h.quantity;
                   const isUp = pnl >= 0;
 
@@ -335,9 +289,6 @@ export default function BrokerPage() {
                       <td className="py-2 font-medium">
                         {h.symbol}
                         <span className="ml-1.5 text-xs text-gray-500">{h.exchange}</span>
-                        {liveTick && (
-                          <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-400" title="Live price" />
-                        )}
                       </td>
                       <td className="py-2 text-right">{h.quantity}</td>
                       <td className="py-2 text-right">{formatINR(h.avgPrice)}</td>

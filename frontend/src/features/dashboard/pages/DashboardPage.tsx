@@ -1,10 +1,8 @@
 import { useEffect } from 'react';
 import { usePortfolioStore } from '@/stores/portfolio.store';
-import { useNotificationStore } from '@/stores/notification.store';
-import { useAnalyticsStore } from '@/stores/analytics.store';
-import { useMarketTicks } from '@/hooks/useMarketTicks';
+import { useQuotes } from '@/hooks/useQuotes';
 import { formatINR, formatPercent } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Briefcase, Bell, Activity, BarChart3, Shield } from 'lucide-react';
+import { TrendingUp, TrendingDown, Briefcase, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -19,14 +17,10 @@ const DASHBOARD_SYMBOLS = [
 
 export default function DashboardPage() {
   const { holdings, totalValue, totalPnl, fetchHoldings, isLoading } = usePortfolioStore();
-  const { unreadCount, fetch: fetchNotifications } = useNotificationStore();
-  const { summary, fetchSummary } = useAnalyticsStore();
-  const { ticks } = useMarketTicks(DASHBOARD_SYMBOLS);
+  const { ticks } = useQuotes(DASHBOARD_SYMBOLS, 5000);
 
   useEffect(() => {
     fetchHoldings();
-    fetchNotifications();
-    fetchSummary();
   }, []);
 
   const totalPnlPct = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
@@ -72,7 +66,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Portfolio Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="card">
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <Briefcase className="h-4 w-4" /> Portfolio Value
@@ -99,57 +93,7 @@ export default function DashboardPage() {
           </div>
           <p className="mt-2 text-2xl font-bold">{holdings.length}</p>
         </div>
-
-        <div className="card">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <Bell className="h-4 w-4" /> Unread Alerts
-          </div>
-          <p className="mt-2 text-2xl font-bold">{unreadCount}</p>
-        </div>
       </div>
-
-      {/* Analytics Quick View */}
-      {summary && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Link to="/analytics" className="card transition-colors hover:border-gray-700">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Shield className="h-4 w-4" /> Diversification Score
-            </div>
-            <p className="mt-2 text-2xl font-bold">{summary.diversificationScore}/100</p>
-            <p className="text-sm text-gray-500">{summary.sectorCount} sectors</p>
-          </Link>
-          <Link to="/analytics" className="card transition-colors hover:border-gray-700">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <BarChart3 className="h-4 w-4" /> Day Change
-            </div>
-            <p className={`mt-2 text-2xl font-bold ${summary.dayChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {formatINR(summary.dayChange)}
-            </p>
-            <p className={`text-sm ${summary.dayChangePct >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {formatPercent(summary.dayChangePct)}
-            </p>
-          </Link>
-          <Link to="/analytics" className="card transition-colors hover:border-gray-700">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              {summary.topGainers.length > 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              Top Mover
-            </div>
-            {summary.topGainers[0] ? (
-              <>
-                <p className="mt-2 text-2xl font-bold text-green-400">{summary.topGainers[0].symbol}</p>
-                <p className="text-sm text-green-500">+{summary.topGainers[0].pnlPercent.toFixed(2)}%</p>
-              </>
-            ) : summary.topLosers[0] ? (
-              <>
-                <p className="mt-2 text-2xl font-bold text-red-400">{summary.topLosers[0].symbol}</p>
-                <p className="text-sm text-red-500">{summary.topLosers[0].pnlPercent.toFixed(2)}%</p>
-              </>
-            ) : (
-              <p className="mt-2 text-gray-500">No data</p>
-            )}
-          </Link>
-        </div>
-      )}
 
       {/* Top Holdings */}
       <div className="card">

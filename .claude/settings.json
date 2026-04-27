@@ -3,7 +3,10 @@
     "allow": [
       "Bash(kubectl exec *)",
       "Bash(curl -sL \"https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz\")",
-      "Bash(zcat)"
+      "Bash(zcat)",
+      "Read(//home/ioss/.nvm/versions/node/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(bash -c 'source ~/.nvm/nvm.sh 2>/dev/null && nvm ls 2>&1')"
     ]
   }
 }
