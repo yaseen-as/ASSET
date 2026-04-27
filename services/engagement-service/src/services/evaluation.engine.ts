@@ -1,4 +1,3 @@
-import Redis from 'ioredis';
 import { AlertRepository, AlertRow } from '../alerts/alert.repository';
 import { NotificationService } from '../notifications/notification.service';
 import { config } from '../config';
@@ -7,58 +6,23 @@ import { createLogger } from '../utils/logger';
 const logger = createLogger('EvaluationEngine');
 
 /**
- * Subscribes to market:tick:* via Redis and evaluates active alerts.
- * When an alert triggers, it directly calls NotificationService
- * (no Redis hop — both domains live in the same process).
- *
- * Still publishes alert:triggered to Redis for any external consumers.
+ * Evaluates alerts on-demand for a given symbol+price tick.
+ * Called by market-service HTTP polling results forwarded from alert checks,
+ * or triggered periodically via setInterval for stale-alert expiry.
  */
 export class EvaluationEngine {
   private alertRepo: AlertRepository;
   private notificationService: NotificationService;
-  private redisSub: Redis;
-  private redisPub: Redis;
+  private expiryTimer: NodeJS.Timeout | null = null;
 
   constructor(alertRepo: AlertRepository, notificationService: NotificationService) {
     this.alertRepo = alertRepo;
     this.notificationService = notificationService;
-    this.redisSub = new Redis({
-      host: config.redis.host,
-      port: config.redis.port,
-      password: config.redis.password,
-    });
-    this.redisPub = new Redis({
-      host: config.redis.host,
-      port: config.redis.port,
-      password: config.redis.password,
-    });
   }
 
   start(): void {
-    this.redisSub.psubscribe('market:tick:*', (err) => {
-      if (err) {
-        logger.error('Failed to subscribe to market ticks', err);
-        return;
-      }
-      logger.info('Subscribed to market:tick:* channels');
-    });
-
-    this.redisSub.on('pmessage', async (_pattern, channel, message) => {
-      try {
-        const parts = channel.split(':');
-        const exchange = parts[2];
-        const symbol = parts[3];
-        if (!exchange || !symbol) return;
-
-        const tick = JSON.parse(message);
-        await this.evaluateForSymbol(symbol, exchange, tick);
-      } catch (err) {
-        logger.error('Error processing tick message', err);
-      }
-    });
-
-    // Periodic expiry check
-    setInterval(async () => {
+    // Periodic expiry check — no Redis subscription needed
+    this.expiryTimer = setInterval(async () => {
       try {
         const expired = await this.alertRepo.expireStale();
         if (expired > 0) logger.info(`Expired ${expired} stale alerts`);
@@ -68,7 +32,7 @@ export class EvaluationEngine {
     }, 60_000);
   }
 
-  private async evaluateForSymbol(
+  async evaluateForSymbol(
     symbol: string,
     exchange: string,
     tick: { ltp: number; volume?: number; change_pct?: number },
@@ -83,7 +47,6 @@ export class EvaluationEngine {
         continue;
       }
 
-      // Cooldown check
       if (alert.last_triggered_at) {
         const elapsed = Date.now() - new Date(alert.last_triggered_at).getTime();
         if (elapsed < config.alertEvaluation.cooldownMs) continue;
@@ -106,13 +69,8 @@ export class EvaluationEngine {
         label: alert.label || undefined,
       };
 
-      // Direct call — no Redis hop needed within same process
       await this.notificationService.handleAlertTriggered(triggerPayload);
 
-      // Still publish for any external consumers
-      await this.redisPub.publish('alert:triggered', JSON.stringify(triggerPayload));
-
-      // Auto-disable if max trigger count reached
       if (
         config.alertEvaluation.maxTriggerCount > 0 &&
         updated.trigger_count >= config.alertEvaluation.maxTriggerCount
@@ -153,8 +111,6 @@ export class EvaluationEngine {
   }
 
   async stop(): Promise<void> {
-    await this.redisSub.punsubscribe('market:tick:*');
-    this.redisSub.disconnect();
-    this.redisPub.disconnect();
+    if (this.expiryTimer) clearInterval(this.expiryTimer);
   }
 }

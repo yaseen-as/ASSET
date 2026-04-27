@@ -104,7 +104,7 @@ export class SignalRepository {
       .del();
   }
 
-  async getLatestSignalDate(): Promise<string | null> {
+  async getLatestSignalTime(): Promise<string | null> {
     const row = await db(this.table).orderBy('created_at', 'desc').first();
     return row ? (row.created_at as Date).toISOString() : null;
   }

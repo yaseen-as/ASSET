@@ -5,7 +5,6 @@ metadata:
 data:
   SERVICE_NAME: market-service
   PORT: "3004"
-  WS_PORT: "3014"
   NODE_ENV: production
   DB_HOST: postgres-service.database.svc.cluster.local
   DB_PORT: "5432"
@@ -14,5 +13,4 @@ data:
   DB_PASSWORD: admin123
   REDIS_URL: redis://redis-service:6379
   TRADING_SERVICE_URL: http://trading-service
-  MOCK_TICKS: "false"
-  TRACKED_SYMBOLS: "RELIANCE,INFY,SBIN,TCS,HDFCBANK,ICICIBANK,KOTAKBANK,LT,AXISBANK,WIPRO"
+  SIGNAL_CACHE_HOURS: "4"

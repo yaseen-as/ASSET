@@ -1,7 +1,6 @@
 import { RuleEngine } from './rule-engine';
 import { SignalRepository } from './signal.repository';
 import { MarketDataService } from '../market/market-data.service';
-import { config } from '../config';
 import type { OHLCV } from '@platform/shared';
 
 export class SignalGeneratorService {
@@ -61,9 +60,10 @@ export class SignalGeneratorService {
     return created;
   }
 
-  async generateForAllSymbols(): Promise<number> {
+  async generateAll(): Promise<number> {
+    const symbols = ['RELIANCE', 'INFY', 'SBIN', 'TCS', 'HDFCBANK', 'ICICIBANK', 'KOTAKBANK', 'LT', 'AXISBANK', 'WIPRO'];
     let total = 0;
-    for (const symbol of config.trackedSymbols) {
+    for (const symbol of symbols) {
       try {
         total += await this.generateForSymbol(symbol, 'NSE');
       } catch (err: any) {

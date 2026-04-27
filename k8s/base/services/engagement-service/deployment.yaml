@@ -21,7 +21,7 @@ spec:
           image: yaseenas/engagement-service:latest
           ports:
             - containerPort: 3007
-            - containerPort: 3018
+              name: http
           workingDir: /app/services/engagement-service
           envFrom:
             - configMapRef:

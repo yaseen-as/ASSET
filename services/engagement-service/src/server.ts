@@ -5,7 +5,6 @@ import { AlertService } from './alerts/alert.service';
 import { NotificationService } from './notifications/notification.service';
 import { initNotificationController } from './notifications/notification.controller';
 import { EvaluationEngine } from './services/evaluation.engine';
-import { WsNotifier } from './services/ws-notifier';
 import { createLogger } from './utils/logger';
 
 const logger = createLogger('EngagementServer');
@@ -15,16 +14,11 @@ async function start() {
     await initDatabase();
     logger.info('Engagement service DB initialized (alerts + notifications)');
 
-    // Wire up dependencies
-    const wsNotifier = new WsNotifier();
     const alertService = new AlertService();
-    const notificationService = new NotificationService(wsNotifier);
+    const notificationService = new NotificationService();
 
-    // Inject into controller (notification controller needs the service instance)
     initNotificationController(notificationService);
 
-    // Evaluation engine: subscribes to market ticks, evaluates alerts,
-    // calls notificationService directly when alerts trigger
     const evaluationEngine = new EvaluationEngine(
       alertService.getRepository(),
       notificationService,
@@ -32,20 +26,18 @@ async function start() {
 
     app.listen(config.port, () => {
       logger.info(`Engagement service running on port ${config.port}`);
-      logger.info(`WebSocket server on port ${config.wsPort}`);
 
       evaluationEngine.start();
       logger.info('Alert evaluation engine started');
 
       notificationService.startListening();
-      logger.info('Notification event listener started');
+      logger.info('Notification cleanup listener started');
     });
 
     const shutdown = async () => {
       logger.info('Shutting down engagement service...');
       await evaluationEngine.stop();
       await notificationService.stop();
-      wsNotifier.close();
       process.exit(0);
     };
     process.on('SIGINT', shutdown);

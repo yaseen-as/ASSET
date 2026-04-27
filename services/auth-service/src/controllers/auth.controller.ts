@@ -44,33 +44,13 @@ export class AuthController {
     }
   }
 
-  static async refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { refreshToken } = req.body;
-      const tokens = await authService.refresh(refreshToken);
-      res.json({
-        success: true,
-        data: tokens,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   static async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.headers['x-user-id'] as string;
-      const { refreshToken } = req.body;
-
       if (!userId) {
         throw new AppError('User ID required', 'UNAUTHORIZED', 401);
       }
-
-      await authService.logout(userId, refreshToken);
-      res.json({
-        success: true,
-        message: 'Logged out successfully.',
-      });
+      res.json({ success: true, message: 'Logged out successfully.' });
     } catch (error) {
       next(error);
     }

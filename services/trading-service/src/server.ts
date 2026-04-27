@@ -1,13 +1,11 @@
 import { app } from './app';
 import { config } from './config';
 import { initDatabase } from './config/database';
-import { OrderTracker } from './workers/order-tracker';
 import { UpstoxInstrumentService } from './broker/upstox-instrument.service';
 import { BrokerService } from './broker/broker.service';
 import { PortfolioService } from './portfolio/portfolio.service';
 import { initPortfolioController } from './portfolio/portfolio.controller';
 
-const orderTracker = new OrderTracker();
 const symbolMaster = new UpstoxInstrumentService();
 
 async function start() {
@@ -15,13 +13,9 @@ async function start() {
     await initDatabase();
     console.log('Trading Service DB initialized');
 
-    // Wire portfolio domain: inject BrokerService so it never needs HTTP to itself
     const brokerService = new BrokerService();
     const portfolioService = new PortfolioService(brokerService);
     initPortfolioController(portfolioService);
-
-    // Start order status tracker
-    orderTracker.start();
 
     // Sync symbol master if stale (>24h)
     symbolMaster.isStale().then(async (stale) => {
@@ -48,7 +42,4 @@ async function start() {
 
 start();
 
-process.on('SIGTERM', async () => {
-  await orderTracker.stop();
-  process.exit(0);
-});
+process.on('SIGTERM', () => process.exit(0));

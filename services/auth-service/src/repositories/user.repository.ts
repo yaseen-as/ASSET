@@ -1,5 +1,4 @@
 import { db } from '../config/database';
-import { v4 as uuidv4 } from 'uuid';
 
 interface UserRow {
   id: string;
@@ -10,16 +9,6 @@ interface UserRow {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
-}
-
-interface RefreshTokenRow {
-  id: string;
-  user_id: string;
-  token_hash: string;
-  family_id: string;
-  expires_at: Date;
-  revoked: boolean;
-  created_at: Date;
 }
 
 interface OtpRow {
@@ -56,42 +45,6 @@ export class UserRepository {
 
   async setPhoneVerified(phone: string): Promise<void> {
     await db(this.table).where({ phone }).update({ phone_verified: true, updated_at: db.fn.now() });
-  }
-}
-
-export class RefreshTokenRepository {
-  private table = 'auth.refresh_tokens';
-
-  async create(userId: string, tokenHash: string, familyId: string, expiresAt: Date): Promise<RefreshTokenRow> {
-    const [token] = await db(this.table)
-      .insert({
-        user_id: userId,
-        token_hash: tokenHash,
-        family_id: familyId,
-        expires_at: expiresAt,
-      })
-      .returning('*');
-    return token;
-  }
-
-  async findByTokenHash(tokenHash: string): Promise<RefreshTokenRow | undefined> {
-    return db(this.table).where({ token_hash: tokenHash }).first();
-  }
-
-  async revoke(id: string): Promise<void> {
-    await db(this.table).where({ id }).update({ revoked: true });
-  }
-
-  async revokeFamily(familyId: string): Promise<void> {
-    await db(this.table).where({ family_id: familyId }).update({ revoked: true });
-  }
-
-  async revokeAllForUser(userId: string): Promise<void> {
-    await db(this.table).where({ user_id: userId }).update({ revoked: true });
-  }
-
-  async deleteExpired(): Promise<number> {
-    return db(this.table).where('expires_at', '<', db.fn.now()).del();
   }
 }
 

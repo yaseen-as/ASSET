@@ -1,5 +1,4 @@
 import axios from 'axios';
-import Redis from 'ioredis';
 import { db } from '../config/database';
 import { OrderRepository } from './order.repository';
 import { UpstoxInstrumentService } from './upstox-instrument.service';
@@ -27,13 +26,6 @@ const DEFAULT_CASH = 1_000_000; // ₹10,00,000
 export class PaperTradingService {
   private orderRepo = new OrderRepository();
   private symbolMaster = new UpstoxInstrumentService();
-  private redis: Redis;
-  private redisPub: Redis;
-
-  constructor() {
-    this.redis = new Redis(config.redis.url);
-    this.redisPub = new Redis(config.redis.url);
-  }
 
   async placePaperOrder(userId: string, dto: PlacePaperOrderDTO): Promise<OrderResponse> {
     const symbolInfo = await this.symbolMaster.resolveInstrument(dto.symbol, dto.exchange);
@@ -83,17 +75,6 @@ export class PaperTradingService {
     } else {
       await this.updateCash(userId, totalCost);
     }
-
-    await this.redisPub.publish('order:executed', JSON.stringify({
-      userId,
-      orderId: order.id,
-      symbol: dto.symbol,
-      exchange: dto.exchange,
-      action: dto.action,
-      quantity: dto.quantity,
-      price: executionPrice,
-      source: 'paper',
-    }));
 
     return {
       orderId: order.id,
@@ -223,14 +204,7 @@ export class PaperTradingService {
       });
   }
 
-  // Fetch current price: Redis tick cache first, then market-data-service REST
   private async getCurrentPrice(exchange: string, symbol: string): Promise<number> {
-    const cacheKey = `market:tick:cache:${exchange}:${symbol}`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      const tick = JSON.parse(cached);
-      return tick.ltp;
-    }
     try {
       const { data } = await axios.get(
         `${config.marketServiceUrl}/quote/${exchange}/${symbol}`,

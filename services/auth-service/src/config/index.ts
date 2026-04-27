@@ -15,12 +15,7 @@ export const config = {
 
   jwt: {
     secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
-    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
-    refreshExpiryDays: parseInt(process.env.JWT_REFRESH_EXPIRY_DAYS || '7', 10),
-  },
-
-  redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    accessExpiry: process.env.JWT_ACCESS_EXPIRY || '24h',
   },
 
   otp: {

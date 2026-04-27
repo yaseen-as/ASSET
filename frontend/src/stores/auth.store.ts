@@ -11,11 +11,9 @@ interface User {
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  setTokens: (access: string, refresh: string) => void;
   setUser: (user: User) => void;
 
   login: (email: string, password: string) => Promise<void>;
@@ -26,15 +24,11 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
-
-      setTokens: (accessToken, refreshToken) =>
-        set({ accessToken, refreshToken, isAuthenticated: true }),
 
       setUser: (user) => set({ user }),
 
@@ -44,7 +38,6 @@ export const useAuthStore = create<AuthState>()(
           const { data } = await api.post('/auth/login', { email, password });
           set({
             accessToken: data.data.accessToken,
-            refreshToken: data.data.refreshToken,
             user: data.data.user,
             isAuthenticated: true,
           });
@@ -67,19 +60,16 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           await api.post('/auth/verify-otp', { phone, otp });
-          // Server only confirms verification — tokens are issued on login
         } finally {
           set({ isLoading: false });
         }
       },
 
       logout: () => {
-        const rt = get().refreshToken;
-        if (rt) api.post('/auth/logout', { refreshToken: rt }).catch(() => {});
+        api.post('/auth/logout').catch(() => {});
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         });
       },
@@ -88,7 +78,6 @@ export const useAuthStore = create<AuthState>()(
       name: 'auth-storage',
       partialize: (state) => ({
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
