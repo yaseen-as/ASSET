@@ -13,8 +13,6 @@ commonLabels:
 images:
   - name: yaseenas/api-gateway
     newTag: "1.0.0"
-  - name: yaseenas/auth-service
-    newTag: "1.0.0"
   - name: yaseenas/trading-service
     newTag: "1.0.0"
   - name: yaseenas/market-service

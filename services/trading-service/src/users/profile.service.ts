@@ -1,4 +1,4 @@
-import { ProfileRepository } from '../repositories/profile.repository';
+import { ProfileRepository } from './profile.repository';
 import type { UserProfile, UpdateProfileDTO } from '@platform/shared';
 
 export class ProfileService {

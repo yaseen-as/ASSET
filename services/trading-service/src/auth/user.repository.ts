@@ -1,4 +1,4 @@
-import { db } from '../config/database';
+import { authDb as db } from '../config/database';
 
 interface UserRow {
   id: string;

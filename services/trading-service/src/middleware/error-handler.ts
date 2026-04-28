@@ -14,7 +14,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     return;
   }
 
-  logger.error('Unhandled error in auth-service', {
+  logger.error('Unhandled error', {
     error: err.message,
     stack: err.stack,
     path: req.path,

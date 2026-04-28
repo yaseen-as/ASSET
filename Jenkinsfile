@@ -38,7 +38,7 @@ pipeline {
         stage('Detect Changes') {
             steps {
                 script {
-                    def ALL_SERVICES = ['api-gateway', 'auth-service', 'trading-service', 'market-service', 'frontend']
+                    def ALL_SERVICES = ['api-gateway', 'trading-service', 'market-service', 'frontend']
 
                     if (env.BRANCH_NAME == 'main') {
                         env.CHANGED_SERVICES = ALL_SERVICES.join(',')
@@ -183,7 +183,6 @@ pipeline {
                         cd k8s/overlays/prod
                         kustomize edit set image \
                             yaseenas/api-gateway:${env.APP_VERSION} \
-                            yaseenas/auth-service:${env.APP_VERSION} \
                             yaseenas/trading-service:${env.APP_VERSION} \
                             yaseenas/market-service:${env.APP_VERSION} \
                             yaseenas/react-frontend:${env.APP_VERSION}

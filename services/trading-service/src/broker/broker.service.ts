@@ -1,11 +1,10 @@
-import axios from 'axios';
 import { BrokerConnectionRepository, type ConnectionRow } from './broker.repository';
 import { OrderRepository } from './order.repository';
 import * as upstox from './upstox.client';
 import { UpstoxInstrumentService, type SymbolInfo } from './upstox-instrument.service';
 import { PaperTradingService, type PaperBalance } from './paper-trading.service';
+import { ProfileService } from '../users/profile.service';
 import { encrypt, decrypt } from '../utils/encryption';
-import { config } from '../config';
 import { logger } from '../utils/logger';
 import type { BrokerConnection, PlaceOrderDTO, OrderResponse } from '@platform/shared';
 
@@ -21,6 +20,7 @@ export class BrokerService {
   private orderRepo = new OrderRepository();
   private instruments = new UpstoxInstrumentService();
   private paperTrading = new PaperTradingService();
+  private profileService = new ProfileService();
 
   // ─── Token helper ──────────────────────────────────────────────────────────
   // Every Upstox API call reads the user's access_token from the DB at call time.
@@ -238,11 +238,8 @@ export class BrokerService {
 
   private async isPaperTradingEnabled(userId: string): Promise<boolean> {
     try {
-      const { data } = await axios.get(
-        `${config.authServiceUrl}/profile`,
-        { headers: { 'x-user-id': userId }, timeout: 3000 }
-      );
-      return data.data?.paperTrading ?? data.data?.paper_trading ?? false;
+      const profile = await this.profileService.getProfile(userId);
+      return profile?.paperTrading ?? false;
     } catch {
       return false;
     }

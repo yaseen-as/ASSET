@@ -1,6 +1,6 @@
 import { app } from './app';
 import { config } from './config';
-import { initDatabase, initEngagementDatabase } from './config/database';
+import { initDatabase, initEngagementDatabase, initAuthDatabase } from './config/database';
 import { UpstoxInstrumentService } from './broker/upstox-instrument.service';
 import { BrokerService } from './broker/broker.service';
 import { PortfolioService } from './portfolio/portfolio.service';
@@ -19,6 +19,9 @@ async function start() {
 
     await initEngagementDatabase();
     console.log('Trading Service DB initialized (engagement)');
+
+    await initAuthDatabase();
+    console.log('Trading Service DB initialized (auth + users)');
 
     const brokerService = new BrokerService();
     const portfolioService = new PortfolioService(brokerService);

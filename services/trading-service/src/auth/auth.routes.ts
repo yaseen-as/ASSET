@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth.controller';
+import { AuthController } from './auth.controller';
 import { validate } from '../middleware/validate';
 import { registerSchema, loginSchema, verifyOtpSchema } from '@platform/shared';
 

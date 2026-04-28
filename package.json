@@ -15,7 +15,6 @@
     "test": "turbo run test",
     "clean": "turbo run clean",
     "gateway": "npm run dev --workspace=services/api-gateway",
-    "auth": "npm run dev --workspace=services/auth-service",
     "trading": "npm run dev --workspace=services/trading-service",
     "market": "npm run dev --workspace=services/market-service",
     "web": "npm run dev --workspace=frontend"

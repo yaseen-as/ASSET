@@ -58,6 +58,24 @@ export const engagementDb: Knex = knex({
   },
 });
 
+export const authDb: Knex = knex({
+  client: 'pg',
+  connection: {
+    host: config.db.host,
+    port: config.db.port,
+    database: config.authDb.database,
+    user: config.db.user,
+    password: config.db.password,
+  },
+  searchPath: ['auth', 'users', 'public'],
+  pool: { min: 2, max: 10 },
+  migrations: {
+    directory: './migrations-auth',
+    schemaName: 'auth',
+    tableName: 'knex_migrations',
+  },
+});
+
 export async function initDatabase(): Promise<void> {
   await ensureDatabase(config.db.database);
   await db.raw('CREATE SCHEMA IF NOT EXISTS broker');
@@ -70,4 +88,11 @@ export async function initEngagementDatabase(): Promise<void> {
   await engagementDb.raw('CREATE SCHEMA IF NOT EXISTS alerts');
   await engagementDb.raw('CREATE SCHEMA IF NOT EXISTS notifications');
   await engagementDb.migrate.latest();
+}
+
+export async function initAuthDatabase(): Promise<void> {
+  await ensureDatabase(config.authDb.database);
+  await authDb.raw('CREATE SCHEMA IF NOT EXISTS auth');
+  await authDb.raw('CREATE SCHEMA IF NOT EXISTS users');
+  await authDb.migrate.latest();
 }

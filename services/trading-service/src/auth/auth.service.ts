@@ -1,7 +1,7 @@
-import { UserRepository, OtpRepository } from '../repositories/user.repository';
+import { UserRepository, OtpRepository } from './user.repository';
 import { OtpService } from './otp.service';
-import { hashPassword, comparePassword } from '../utils/hash';
-import { generateAccessToken } from '../utils/jwt';
+import { hashPassword, comparePassword } from './hash';
+import { generateAccessToken } from './jwt';
 import { logger } from '../utils/logger';
 import type { AuthTokens } from '@platform/shared';
 import { AppError } from '../errors/app-error';

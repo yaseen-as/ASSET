@@ -24,25 +24,23 @@ router.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'api-gateway', timestamp: new Date().toISOString() });
 });
 
-// ─── Auth Service  /v1/auth/* → auth-service:/ ───────────────────────────────
-// Ingress strips /api prefix, so gateway receives /v1/auth/login etc.
-// pathRewrite strips /v1/auth so auth-service receives /login, /register etc.
+// ─── Auth (merged into trading-service)  /v1/auth/* → trading-service:/ ─────
 router.use(
   '/v1/auth',
   authLimiter,
   createProxyMiddleware({
-    target: config.services.auth,
+    target: config.services.trading,
     changeOrigin: true,
     pathRewrite: { '^/v1/auth': '' },
     on: { proxyReq: makeProxyHandler(true) },
   })
 );
 
-// ─── User Profiles  /v1/users/* → auth-service:/ (merged) ───────────────────
+// ─── User Profiles (merged into trading-service)  /v1/users/* → trading-service:/ ──
 router.use(
   '/v1/users',
   createProxyMiddleware({
-    target: config.services.auth,
+    target: config.services.trading,
     changeOrigin: true,
     pathRewrite: { '^/v1/users': '' },
     on: { proxyReq: makeProxyHandler(true) },

@@ -10,8 +10,9 @@ data:
   DB_PORT: "5432"
   DB_NAME: trading_db
   ENGAGEMENT_DB_NAME: engagement_db
+  AUTH_DB_NAME: auth_db
   DB_USER: admin
   REDIS_URL: redis://redis-service:6379
-  AUTH_SERVICE_URL: http://auth-service
   MARKET_SERVICE_URL: http://market-service
   UPSTOX_REDIRECT_URI: http://api-gateway/v1/broker/callback/upstox
+  OTP_PROVIDER: mock

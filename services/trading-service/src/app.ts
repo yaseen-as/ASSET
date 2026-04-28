@@ -5,7 +5,10 @@ import { brokerRoutes } from './broker/broker.routes';
 import { portfolioRoutes } from './portfolio/portfolio.routes';
 import { alertRoutes } from './engagement/alert.routes';
 import { notificationRoutes } from './engagement/notification.routes';
+import { authRoutes } from './auth/auth.routes';
+import { profileRoutes } from './users/profile.routes';
 import { ServiceError } from './broker/broker.service';
+import { AppError } from './errors/app-error';
 import { createLogger } from './utils/logger';
 import { requestLogger } from './middleware/request-logger';
 
@@ -22,6 +25,12 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'trading-service', timestamp: new Date().toISOString() });
 });
 
+// Auth domain: register, login, otp, logout (merged from auth-service)
+app.use('', authRoutes);
+
+// Users domain: profile (merged from auth-service)
+app.use('', profileRoutes);
+
 // Broker domain: connection management, orders, market quotes, paper trading, symbols
 app.use('', brokerRoutes);
 
@@ -32,9 +41,9 @@ app.use('/portfolio', portfolioRoutes);
 app.use('/alerts', alertRoutes);
 app.use('/notifications', notificationRoutes);
 
-// Error handler
+// Unified error handler — covers ServiceError (broker) and AppError (auth/engagement)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err instanceof ServiceError) {
+  if (err instanceof ServiceError || err instanceof AppError) {
     res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
     return;
   }

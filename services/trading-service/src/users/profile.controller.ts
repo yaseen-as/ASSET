@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ProfileService } from '../services/profile.service';
+import { ProfileService } from './profile.service';
 
 const profileService = new ProfileService();
 
