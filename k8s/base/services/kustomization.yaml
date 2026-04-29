@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - api-gateway/
   - trading-service/
-  - market-service/
+  - insights-service/
 
 # Wait for postgres before starting any backend service
 patches:

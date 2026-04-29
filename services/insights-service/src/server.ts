@@ -9,7 +9,7 @@ import { initRecommendationController } from './recommendations/recommendation.c
 async function start() {
   try {
     await initDatabase();
-    console.log('Market Service DB initialized');
+    console.log('Insights Service DB initialized');
 
     const marketDataService = new MarketDataService();
     const signalGenerator = new SignalGeneratorService(marketDataService);
@@ -18,10 +18,10 @@ async function start() {
     initRecommendationController(signalGenerator);
 
     app.listen(config.port, () => {
-      console.log(`Market Service running on port ${config.port}`);
+      console.log(`Insights Service running on port ${config.port}`);
     });
   } catch (error) {
-    console.error('Failed to start market service:', error);
+    console.error('Failed to start insights service:', error);
     process.exit(1);
   }
 }

@@ -16,7 +16,7 @@
     "clean": "turbo run clean",
     "gateway": "npm run dev --workspace=services/api-gateway",
     "trading": "npm run dev --workspace=services/trading-service",
-    "market": "npm run dev --workspace=services/market-service",
+    "insights": "npm run dev --workspace=services/insights-service",
     "web": "npm run dev --workspace=frontend"
   },
   "devDependencies": {

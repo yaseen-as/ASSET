@@ -7,7 +7,7 @@ const logger = createLogger('EvaluationEngine');
 
 /**
  * Evaluates alerts on-demand for a given symbol+price tick.
- * Called by market-service HTTP polling results forwarded from alert checks,
+ * Called by insights-service HTTP polling results forwarded from alert checks,
  * or triggered periodically via setInterval for stale-alert expiry.
  */
 export class EvaluationEngine {

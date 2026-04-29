@@ -46,5 +46,5 @@ export const config = {
     tokenUrl: 'https://api.upstox.com/v2/login/authorization/token',
     instrumentUrl: 'https://assets.upstox.com/market-quote/instruments/exchange/complete.csv.gz',
   },
-  marketServiceUrl: process.env.MARKET_SERVICE_URL || 'http://localhost:3004',
+  insightsServiceUrl: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
 };

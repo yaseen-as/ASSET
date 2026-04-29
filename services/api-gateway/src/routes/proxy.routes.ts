@@ -70,11 +70,12 @@ router.use(
   })
 );
 
-// ─── Market Service  /v1/market/* → market-service:/ ────────────────────────
+// ─── Insights Service  /v1/market/* → insights-service:/ ───────────────────
+// Frontend still calls /v1/market/* — only the upstream service was renamed.
 router.use(
   '/v1/market',
   createProxyMiddleware({
-    target: config.services.market,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/market': '' },
     on: { proxyReq: makeProxyHandler() },
@@ -92,11 +93,11 @@ router.use(
   })
 );
 
-// ─── Recommendations (merged into market-service)  /v1/recommendations/* → market-service:/recommendations
+// ─── Recommendations  /v1/recommendations/* → insights-service:/recommendations
 router.use(
   '/v1/recommendations',
   createProxyMiddleware({
-    target: config.services.market,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/recommendations': '/recommendations' },
     on: { proxyReq: makeProxyHandler() },

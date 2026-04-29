@@ -6,7 +6,7 @@ import type { OHLCV } from '@platform/shared';
 export class SignalGeneratorService {
   private ruleEngine: RuleEngine;
   private signalRepo: SignalRepository;
-  // Injected — direct call replaces the HTTP hop to market-data-service
+  // Injected — direct call avoids an HTTP hop within the same service
   private marketDataService: MarketDataService;
 
   constructor(marketDataService: MarketDataService) {

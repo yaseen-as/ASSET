@@ -1,31 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: market-service
+  name: insights-service
   labels:
-    app: market-service
+    app: insights-service
     app.kubernetes.io/component: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: market-service
+      app: insights-service
   template:
     metadata:
       labels:
-        app: market-service
+        app: insights-service
         app.kubernetes.io/component: backend
     spec:
       containers:
         - name: app
-          image: yaseenas/market-service:latest
+          image: yaseenas/insights-service:latest
           ports:
             - containerPort: 3004
               name: http
-          workingDir: /app/services/market-service
+          workingDir: /app/services/insights-service
           envFrom:
             - configMapRef:
-                name: market-service-config
+                name: insights-service-config
           readinessProbe:
             httpGet:
               path: /health

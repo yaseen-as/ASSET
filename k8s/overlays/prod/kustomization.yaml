@@ -15,7 +15,7 @@ images:
     newTag: "1.0.0"
   - name: yaseenas/trading-service
     newTag: "1.0.0"
-  - name: yaseenas/market-service
+  - name: yaseenas/insights-service
     newTag: "1.0.0"
   - name: yaseenas/react-frontend
     newTag: "1.0.0"

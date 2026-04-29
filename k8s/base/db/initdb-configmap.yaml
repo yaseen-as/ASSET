@@ -5,6 +5,6 @@ metadata:
   namespace: database
 data:
   # Grants CREATEDB to the admin user so each service's ensureDatabase()
-  # can create its own database (trading_db, engagement_db, auth_db, market_db).
+  # can create its own database (trading_db, engagement_db, auth_db, insights_db).
   grant-createdb.sql: |
     ALTER USER admin CREATEDB;

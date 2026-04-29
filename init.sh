@@ -112,7 +112,7 @@ start_service "user-service" "services/user-service"
 
 start_service "broker-service" "services/broker-service"
 
-start_service "market-data-service" "services/market-data-service"
+start_service "insights-service" "services/insights-service"
 
 start_service "portfolio-service" "services/portfolio-service"
 

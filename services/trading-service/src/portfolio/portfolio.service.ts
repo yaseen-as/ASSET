@@ -41,11 +41,11 @@ export class PortfolioService {
       };
     });
 
-    // Refresh current prices from market-data-service
+    // Refresh current prices from insights-service
     for (const h of holdings) {
       try {
         const { data } = await axios.get(
-          `${config.marketServiceUrl}/quote/${h.exchange}/${h.symbol}`,
+          `${config.insightsServiceUrl}/quote/${h.exchange}/${h.symbol}`,
           { timeout: 3000 },
         );
         if (data.data?.ltp) {

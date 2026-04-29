@@ -11,7 +11,8 @@
       "Bash(bash -c 'source ~/.nvm/nvm.sh && nvm use 20.19.5 >/dev/null 2>&1 && for svc in engagement-service market-service trading-service; do echo \"=== $svc ===\" && cd /home/ioss/Desktop/as/asset_management/services/$svc && npx tsc --noEmit --skipLibCheck 2>&1 | grep \"error TS\" | head -10; done')",
       "Bash(bash -c 'source ~/.nvm/nvm.sh && nvm use 20.19.5 >/dev/null 2>&1 && cd /home/ioss/Desktop/as/asset_management/services/trading-service && npx tsc --noEmit --skipLibCheck 2>&1 | grep \"error TS\" | head -30')",
       "Bash(bash -c 'source ~/.nvm/nvm.sh && nvm use 20.19.5 >/dev/null 2>&1 && cd /home/ioss/Desktop/as/asset_management/services/api-gateway && npx tsc --noEmit --skipLibCheck 2>&1 | grep \"error TS\" | head -10')",
-      "Bash(bash -c 'source ~/.nvm/nvm.sh && nvm use 20.19.5 >/dev/null 2>&1 && for svc in trading-service api-gateway market-service; do echo \"=== $svc ===\"; cd /home/ioss/Desktop/as/asset_management/services/$svc && npx tsc --noEmit --skipLibCheck 2>&1 | grep \"error TS\" | grep -v \"composite\" | head -10; cd /home/ioss/Desktop/as/asset_management; done')"
+      "Bash(bash -c 'source ~/.nvm/nvm.sh && nvm use 20.19.5 >/dev/null 2>&1 && for svc in trading-service api-gateway market-service; do echo \"=== $svc ===\"; cd /home/ioss/Desktop/as/asset_management/services/$svc && npx tsc --noEmit --skipLibCheck 2>&1 | grep \"error TS\" | grep -v \"composite\" | head -10; cd /home/ioss/Desktop/as/asset_management; done')",
+      "Bash(git mv *)"
     ],
     "additionalDirectories": [
       "/home/ioss/Desktop/as/asset_management/services/engagement-service/migrations"

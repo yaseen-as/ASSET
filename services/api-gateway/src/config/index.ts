@@ -17,7 +17,7 @@ export const config = {
 
   services: {
     trading: process.env.TRADING_SERVICE_URL || 'http://localhost:3003',
-    market: process.env.MARKET_SERVICE_URL || 'http://localhost:3004',
+    insights: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
   },
 
   rateLimit: {

@@ -207,7 +207,7 @@ export class PaperTradingService {
   private async getCurrentPrice(exchange: string, symbol: string): Promise<number> {
     try {
       const { data } = await axios.get(
-        `${config.marketServiceUrl}/quote/${exchange}/${symbol}`,
+        `${config.insightsServiceUrl}/quote/${exchange}/${symbol}`,
         { timeout: 3000 }
       );
       return data.data?.ltp || 0;
