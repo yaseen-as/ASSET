@@ -1,4 +1,4 @@
-import { authDb as db } from '../config/database';
+import { db } from '../config/database';
 
 export interface ProfileRow {
   user_id: string;

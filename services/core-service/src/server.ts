@@ -1,6 +1,6 @@
 import { app } from './app';
 import { config } from './config';
-import { initDatabase, initEngagementDatabase, initAuthDatabase } from './config/database';
+import { initDatabase } from './config/database';
 import { UpstoxInstrumentService } from './broker/upstox-instrument.service';
 import { BrokerService } from './broker/broker.service';
 import { PortfolioService } from './portfolio/portfolio.service';
@@ -15,13 +15,7 @@ const symbolMaster = new UpstoxInstrumentService();
 async function start() {
   try {
     await initDatabase();
-    console.log('Core Service DB initialized (broker + portfolio)');
-
-    await initEngagementDatabase();
-    console.log('Core Service DB initialized (engagement)');
-
-    await initAuthDatabase();
-    console.log('Core Service DB initialized (auth + users)');
+    console.log('Core Service DB initialized (auth + users + broker + portfolio + engagement)');
 
     const brokerService = new BrokerService();
     const portfolioService = new PortfolioService(brokerService);

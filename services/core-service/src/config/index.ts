@@ -7,15 +7,9 @@ export const config = {
   db: {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'trading_db',
+    database: process.env.DB_NAME || 'core_db',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-  },
-  engagementDb: {
-    database: process.env.ENGAGEMENT_DB_NAME || 'engagement_db',
-  },
-  authDb: {
-    database: process.env.AUTH_DB_NAME || 'auth_db',
   },
   engagement: {
     pageSize: 25,

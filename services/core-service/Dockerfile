@@ -25,8 +25,6 @@ COPY --from=builder /app/packages/shared/package.json /app/packages/shared/packa
 COPY --from=builder /app/services/core-service/dist ./dist
 COPY --from=builder /app/services/core-service/package.json ./
 COPY --from=builder /app/services/core-service/migrations ./migrations
-COPY --from=builder /app/services/core-service/migrations-engagement ./migrations-engagement
-COPY --from=builder /app/services/core-service/migrations-auth ./migrations-auth
 
 EXPOSE 3001
 CMD ["node", "dist/server.js"]

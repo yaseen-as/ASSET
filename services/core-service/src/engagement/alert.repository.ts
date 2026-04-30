@@ -1,4 +1,4 @@
-import { engagementDb as db } from '../config/database';
+import { db } from '../config/database';
 
 export interface AlertRow {
   id: string;
@@ -19,7 +19,7 @@ export interface AlertRow {
 }
 
 export class AlertRepository {
-  private table = 'alerts.alerts';
+  private table = 'engagement.alerts';
 
   async create(data: Partial<AlertRow>): Promise<AlertRow> {
     const [row] = await db(this.table).insert(data).returning('*');

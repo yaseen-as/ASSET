@@ -1,4 +1,4 @@
-import { engagementDb as db } from '../config/database';
+import { db } from '../config/database';
 
 export interface NotificationRow {
   id: string;
@@ -25,8 +25,8 @@ export interface PreferencesRow {
 }
 
 export class NotificationRepository {
-  private table = 'notifications.notifications';
-  private prefsTable = 'notifications.preferences';
+  private table = 'engagement.notifications';
+  private prefsTable = 'engagement.preferences';
 
   async create(data: Partial<NotificationRow>): Promise<NotificationRow> {
     const [row] = await db(this.table).insert(data).returning('*');
