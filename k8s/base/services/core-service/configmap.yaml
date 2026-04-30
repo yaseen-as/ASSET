@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: trading-service-config
+  name: core-service-config
 data:
-  SERVICE_NAME: trading-service
-  PORT: "3003"
+  SERVICE_NAME: core-service
+  PORT: "3001"
   NODE_ENV: production
   DB_HOST: postgres-service.database.svc.cluster.local
   DB_PORT: "5432"
-  DB_NAME: trading_db
+  DB_NAME: core_db
   ENGAGEMENT_DB_NAME: engagement_db
   AUTH_DB_NAME: auth_db
   DB_USER: admin

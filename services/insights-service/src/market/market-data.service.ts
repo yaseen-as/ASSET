@@ -11,7 +11,7 @@ export class MarketDataService {
   private redis = new Redis(config.redis.url);
 
   async getQuote(exchange: Exchange, symbol: string): Promise<Quote> {
-    // 1. Try Redis tick cache first (populated by real feed or previous trading-service fetch)
+    // 1. Try Redis tick cache first (populated by real feed or previous core-service fetch)
     const cacheKey = `market:tick:cache:${exchange}:${symbol}`;
     const cached = await this.redis.get(cacheKey);
     if (cached) {
@@ -46,10 +46,10 @@ export class MarketDataService {
       };
     }
 
-    // 3. Fetch real-time quote from trading-service (Upstox API)
+    // 3. Fetch real-time quote from core-service (Upstox API)
     try {
       const { data } = await axios.get(
-        `${config.tradingServiceUrl}/market/quote/${exchange}/${symbol}`,
+        `${config.coreServiceUrl}/market/quote/${exchange}/${symbol}`,
         { timeout: 8000 },
       );
 

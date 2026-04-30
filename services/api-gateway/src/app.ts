@@ -1,24 +1,26 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
+import {
+  requestLogger,
+  correlationIdMiddleware,
+  errorHandler,
+  helmetMiddleware,
+  corsMiddleware,
+} from '@platform/shared';
 import { authMiddleware } from './middleware/auth.middleware';
-import { correlationIdMiddleware } from './middleware/correlation-id';
 import { defaultLimiter } from './middleware/rate-limiter';
-import { errorHandler } from './middleware/error-handler';
-import { requestLogger } from './middleware/request-logger';
 import { proxyRoutes } from './routes/proxy.routes';
 
 const app = express();
 
 // ─── Security ───
-app.use(helmet());
+app.use(helmetMiddleware());
 app.use(
-  cors({
+  corsMiddleware({
     origin: process.env.CORS_ORIGIN
       ? process.env.CORS_ORIGIN.split(',')
       : ['http://localhost:5173', 'http://asset.dev.local:8080'],
     credentials: true,
-  })
+  }),
 );
 
 // ─── Logging ───

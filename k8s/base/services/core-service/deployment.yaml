@@ -1,41 +1,42 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: trading-service
+  name: core-service
   labels:
-    app: trading-service
+    app: core-service
     app.kubernetes.io/component: backend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: trading-service
+      app: core-service
   template:
     metadata:
       labels:
-        app: trading-service
+        app: core-service
         app.kubernetes.io/component: backend
     spec:
       containers:
         - name: app
-          image: yaseenas/trading-service:latest
+          image: yaseenas/core-service:latest
           ports:
-            - containerPort: 3003
-          workingDir: /app/services/trading-service
+            - containerPort: 3001
+              name: http
+          workingDir: /app/services/core-service
           envFrom:
             - configMapRef:
-                name: trading-service-config
+                name: core-service-config
             - secretRef:
-                name: trading-service-secret
+                name: core-service-secret
           readinessProbe:
             httpGet:
               path: /health
-              port: 3003
+              port: 3001
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
-              port: 3003
+              port: 3001
             initialDelaySeconds: 30
             periodSeconds: 15

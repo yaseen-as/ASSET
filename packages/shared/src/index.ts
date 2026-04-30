@@ -16,3 +16,15 @@ export * from './constants/indicators';
 
 // ─── Validators ───
 export * from './validators/schemas';
+
+// ─── Errors ───
+export * from './errors/app-error';
+
+// ─── Utils ───
+export * from './utils/logger';
+
+// ─── Middleware ───
+export * from './middleware/request-logger';
+export * from './middleware/correlation-id';
+export * from './middleware/error-handler';
+export * from './middleware/security';

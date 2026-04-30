@@ -1,6 +1,4 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
 import { brokerRoutes } from './broker/broker.routes';
 import { portfolioRoutes } from './portfolio/portfolio.routes';
 import { alertRoutes } from './engagement/alert.routes';
@@ -8,27 +6,31 @@ import { notificationRoutes } from './engagement/notification.routes';
 import { authRoutes } from './auth/auth.routes';
 import { profileRoutes } from './users/profile.routes';
 import { ServiceError } from './broker/broker.service';
-import { AppError } from './errors/app-error';
-import { createLogger } from './utils/logger';
-import { requestLogger } from './middleware/request-logger';
+import {
+  AppError,
+  createLogger,
+  requestLogger,
+  helmetMiddleware,
+  corsMiddleware,
+} from '@platform/shared';
 
-const logger = createLogger('TradingApp');
+const logger = createLogger('CoreApp');
 
 const app = express();
 
-app.use(helmet());
-app.use(cors());
+app.use(helmetMiddleware());
+app.use(corsMiddleware());
 app.use(express.json());
 app.use(requestLogger);
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'trading-service', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'core-service', timestamp: new Date().toISOString() });
 });
 
-// Auth domain: register, login, otp, logout (merged from auth-service)
+// Auth domain: register, login, otp, logout
 app.use('', authRoutes);
 
-// Users domain: profile (merged from auth-service)
+// Users domain: profile
 app.use('', profileRoutes);
 
 // Broker domain: connection management, orders, market quotes, paper trading, symbols
@@ -37,7 +39,7 @@ app.use('', brokerRoutes);
 // Portfolio domain: holdings, watchlists, broker sync
 app.use('/portfolio', portfolioRoutes);
 
-// Engagement domain: alerts + notifications (merged from engagement-service)
+// Engagement domain: alerts + notifications
 app.use('/alerts', alertRoutes);
 app.use('/notifications', notificationRoutes);
 
@@ -47,7 +49,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
     res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
     return;
   }
-  logger.error('Trading service error:', err);
+  logger.error('Core service error:', err);
   res.status(500).json({ success: false, error: { code: 'INTERNAL_SERVER_ERROR', message: err.message } });
 });
 

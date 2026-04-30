@@ -10,9 +10,15 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "helmet": "^8.0.0",
+    "winston": "^3.17.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "typescript": "^5.7.0"
   }
 }

@@ -1,17 +1,19 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
 import { marketRoutes } from './market/market.routes';
 import { recommendationRoutes } from './recommendations/recommendation.routes';
-import { createLogger } from './utils/logger';
-import { requestLogger } from './middleware/request-logger';
+import {
+  createLogger,
+  requestLogger,
+  helmetMiddleware,
+  corsMiddleware,
+} from '@platform/shared';
 
 const logger = createLogger('InsightsApp');
 
 const app = express();
 
-app.use(helmet());
-app.use(cors());
+app.use(helmetMiddleware());
+app.use(corsMiddleware());
 app.use(express.json());
 app.use(requestLogger);
 

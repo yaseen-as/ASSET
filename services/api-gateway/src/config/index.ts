@@ -16,7 +16,7 @@ export const config = {
   },
 
   services: {
-    trading: process.env.TRADING_SERVICE_URL || 'http://localhost:3003',
+    core: process.env.CORE_SERVICE_URL || 'http://localhost:3001',
     insights: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
   },
 

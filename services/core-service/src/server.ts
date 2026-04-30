@@ -15,13 +15,13 @@ const symbolMaster = new UpstoxInstrumentService();
 async function start() {
   try {
     await initDatabase();
-    console.log('Trading Service DB initialized (broker + portfolio)');
+    console.log('Core Service DB initialized (broker + portfolio)');
 
     await initEngagementDatabase();
-    console.log('Trading Service DB initialized (engagement)');
+    console.log('Core Service DB initialized (engagement)');
 
     await initAuthDatabase();
-    console.log('Trading Service DB initialized (auth + users)');
+    console.log('Core Service DB initialized (auth + users)');
 
     const brokerService = new BrokerService();
     const portfolioService = new PortfolioService(brokerService);
@@ -41,19 +41,19 @@ async function start() {
     // Sync symbol master if stale (>24h)
     symbolMaster.isStale().then(async (stale) => {
       if (stale) {
-        console.log('[Trading] Symbol master is stale, syncing...');
+        console.log('[Core] Symbol master is stale, syncing...');
         try {
           await symbolMaster.fetchAndSync();
         } catch (err: any) {
-          console.error('[Trading] Symbol master sync failed (non-fatal):', err.message);
+          console.error('[Core] Symbol master sync failed (non-fatal):', err.message);
         }
       }
     }).catch((err: any) => {
-      console.error('[Trading] Symbol master stale-check failed:', err.message);
+      console.error('[Core] Symbol master stale-check failed:', err.message);
     });
 
     app.listen(config.port, () => {
-      console.log(`Trading Service running on port ${config.port}`);
+      console.log(`Core Service running on port ${config.port}`);
     });
 
     const shutdown = async () => {
@@ -64,7 +64,7 @@ async function start() {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {
-    console.error('Failed to start trading service:', error);
+    console.error('Failed to start core service:', error);
     process.exit(1);
   }
 }

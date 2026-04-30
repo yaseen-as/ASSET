@@ -1,4 +1,4 @@
 import { createLogger } from '@platform/shared';
 
 export { createLogger };
-export const logger = createLogger('api-gateway');
+export const logger = createLogger('CoreService');

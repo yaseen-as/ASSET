@@ -14,5 +14,3 @@ export function createLogger(service: string): winston.Logger {
     transports: [new winston.transports.Console()],
   });
 }
-
-export const logger = createLogger('TradingService');
