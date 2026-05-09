@@ -1,4 +1,5 @@
-# Use a different hostname in dev to avoid clashing with prod
+# Dev ingress — no host restriction so ngrok/any tunnel URL works.
+# Nginx ingress treats a rule with no host as a catch-all (matches any Host header).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,8 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   rules:
-    - host: asset.dev.local
-      http:
+    - http:
         paths:
           - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
