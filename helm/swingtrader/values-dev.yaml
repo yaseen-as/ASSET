@@ -1,0 +1,39 @@
+# Development overrides — apply with:
+#   helm upgrade --install swingtrader ./helm/swingtrader -f helm/swingtrader/values-dev.yaml
+#
+# Pre-requisites:
+#   1. k3d cluster created with source volume mount:
+#        k3d cluster create dev --volume /home/ioss/Desktop/as/asset_management:/app@all \
+#          --config k8s/k3d-dev-config.yaml
+#   2. npm install run on the host: cd /home/ioss/Desktop/as/asset_management && npm install
+
+global:
+  environment: dev
+
+hotReload:
+  enabled: true
+  hostPath: /app
+  nodeImage: node:20-alpine
+
+apiGateway:
+  replicas: 1
+  probes:
+    enabled: false
+
+coreService:
+  replicas: 1
+  probes:
+    enabled: false
+
+insightsService:
+  replicas: 1
+  probes:
+    enabled: false
+
+frontend:
+  replicas: 1
+  probes:
+    enabled: false
+
+ingress:
+  host: asset.dev.local

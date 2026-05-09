@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+    app.kubernetes.io/component: backend
+    environment: {{ .Values.global.environment }}
+spec:
+  replicas: {{ .Values.apiGateway.replicas }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        app.kubernetes.io/component: backend
+    spec:
+      initContainers:
+        {{- include "swingtrader.waitForPostgres" . | nindent 8 }}
+      containers:
+        - name: app
+          {{- if .Values.hotReload.enabled }}
+          image: {{ .Values.hotReload.nodeImage }}
+          command: ["sh", "-c"]
+          args:
+            - "rm -f /app/packages/shared/tsconfig.tsbuildinfo && (cd /app && npm run build --workspace=packages/shared) && npm run dev"
+          {{- else }}
+          image: {{ .Values.apiGateway.image.repository }}:{{ .Values.apiGateway.image.tag }}
+          {{- end }}
+          workingDir: {{ .Values.apiGateway.workingDir }}
+          ports:
+            - containerPort: {{ .Values.apiGateway.port }}
+          envFrom:
+            - configMapRef:
+                name: api-gateway-config
+          {{- if .Values.hotReload.enabled }}
+          env:
+            - name: NODE_ENV
+              value: development
+          volumeMounts:
+            {{- include "swingtrader.hotReloadVolumeMount" . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.apiGateway.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          {{- end }}
+          {{- with .Values.apiGateway.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- if .Values.hotReload.enabled }}
+      volumes:
+        {{- include "swingtrader.hotReloadVolume" . | nindent 8 }}
+      {{- end }}

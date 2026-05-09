@@ -1,0 +1,145 @@
+# Default values — suitable for a base/dev install.
+# Override with values-dev.yaml or values-prod.yaml.
+
+global:
+  environment: production
+
+# ─── PostgreSQL ───────────────────────────────────────────────────────────────
+postgresql:
+  namespace: database
+  image: postgres:15
+  credentials:
+    user: admin
+    password: admin123
+    database: postgres
+  storage: 5Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: "250m"
+    limits:
+      memory: 512Mi
+      cpu: "500m"
+
+# ─── Redis ────────────────────────────────────────────────────────────────────
+redis:
+  image: redis:7-alpine
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+# ─── Hot-reload (dev only) ────────────────────────────────────────────────────
+# When enabled, all backend services swap to node:20-alpine + ts-node-dev.
+# Requires the project root to be mounted at hostPath inside k3d nodes.
+hotReload:
+  enabled: false
+  hostPath: /app          # path inside k3d node (k3d mounts host → /app@all)
+  nodeImage: node:20-alpine
+
+# ─── API Gateway ──────────────────────────────────────────────────────────────
+apiGateway:
+  replicas: 2
+  image:
+    repository: yaseenas/api-gateway
+    tag: latest
+  workingDir: /app/services/api-gateway
+  port: 3000
+  config:
+    SERVICE_NAME: api-gateway
+    PORT: "3000"
+    NODE_ENV: production
+    CORE_SERVICE_URL: http://core-service
+    INSIGHTS_SERVICE_URL: http://insights-service
+    REDIS_URL: redis://redis-service:6379
+    # Must match core-service JWT_SECRET
+    JWT_SECRET: dev-jwt-secret-change-this-in-production-min-32chars
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Core Service ─────────────────────────────────────────────────────────────
+coreService:
+  replicas: 2
+  image:
+    repository: yaseenas/core-service
+    tag: latest
+  workingDir: /app/services/core-service
+  port: 3001
+  config:
+    SERVICE_NAME: core-service
+    PORT: "3001"
+    NODE_ENV: production
+    DB_HOST: postgres-service.database.svc.cluster.local
+    DB_PORT: "5432"
+    DB_NAME: core_db
+    DB_USER: admin
+    REDIS_URL: redis://redis-service:6379
+    INSIGHTS_SERVICE_URL: http://insights-service
+    UPSTOX_REDIRECT_URI: http://api-gateway/v1/broker/callback/upstox
+    OTP_PROVIDER: mock
+  # Sensitive values — replace before deploying to production.
+  # Consider Sealed Secrets or an out-of-repo secret file instead of committing real values.
+  secrets:
+    BROKER_TOKEN_ENCRYPTION_KEY: "3fc8eb37f3ddc5bf48505f73eba5d64bec06b446ac4839f8f2b282478e3ee911"
+    UPSTOX_CLIENT_ID: "688f6c33-d7c7-4c52-89e8-1e990dd6c767"
+    UPSTOX_CLIENT_SECRET: "53sgr84l0u"
+    DB_PASSWORD: "admin123"
+    JWT_SECRET: "dev-jwt-secret-change-this-in-production-min-32chars"
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Insights Service ─────────────────────────────────────────────────────────
+insightsService:
+  replicas: 2
+  image:
+    repository: yaseenas/insights-service
+    tag: latest
+  workingDir: /app/services/insights-service
+  port: 3004
+  config:
+    SERVICE_NAME: insights-service
+    PORT: "3004"
+    NODE_ENV: production
+    DB_HOST: postgres-service.database.svc.cluster.local
+    DB_PORT: "5432"
+    DB_NAME: insights_db
+    DB_USER: admin
+    DB_PASSWORD: admin123
+    REDIS_URL: redis://redis-service:6379
+    CORE_SERVICE_URL: http://core-service
+    SIGNAL_CACHE_HOURS: "4"
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Frontend ─────────────────────────────────────────────────────────────────
+frontend:
+  replicas: 2
+  image:
+    repository: yaseenas/react-frontend
+    tag: latest
+  port: 80
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Ingress ──────────────────────────────────────────────────────────────────
+ingress:
+  host: asset.local
+  tls:
+    enabled: false
+    secretName: platform-tls
+    certManagerIssuer: ""   # e.g. letsencrypt-prod
+
+# ─── Jenkins ──────────────────────────────────────────────────────────────────
+jenkins:
+  enabled: true
+  namespace: jenkins
+  image: jenkins/jenkins:lts
+  storage: 5Gi
+  nodePort: 30008

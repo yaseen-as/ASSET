@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-frontend
+  labels:
+    app: react-frontend
+    app.kubernetes.io/component: frontend
+    environment: {{ .Values.global.environment }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: react-frontend
+  template:
+    metadata:
+      labels:
+        app: react-frontend
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+        - name: app
+          {{- if .Values.hotReload.enabled }}
+          image: {{ .Values.hotReload.nodeImage }}
+          workingDir: /app/frontend
+          command: ["sh", "-c"]
+          args: ["npm run dev -- --host 0.0.0.0"]
+          ports:
+            - containerPort: 5173
+          {{- else }}
+          image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+          ports:
+            - containerPort: {{ .Values.frontend.port }}
+          {{- end }}
+          {{- if .Values.hotReload.enabled }}
+          env:
+            - name: NODE_ENV
+              value: development
+          volumeMounts:
+            {{- include "swingtrader.hotReloadVolumeMount" . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.frontend.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          {{- end }}
+          {{- with .Values.frontend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- if .Values.hotReload.enabled }}
+      volumes:
+        {{- include "swingtrader.hotReloadVolume" . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: insights-service
+  labels:
+    app: insights-service
+spec:
+  selector:
+    app: insights-service
+  ports:
+    - port: 80
+      targetPort: {{ .Values.insightsService.port }}

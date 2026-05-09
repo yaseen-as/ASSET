@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: {{ .Values.postgresql.namespace }}
+data:
+  init.sql: |
+    -- Grant CREATEDB so application services can create their own databases (core_db, insights_db)
+    ALTER USER {{ .Values.postgresql.credentials.user }} CREATEDB;

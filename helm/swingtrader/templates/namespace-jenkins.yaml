@@ -1,0 +1,8 @@
+{{- if .Values.jenkins.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.jenkins.namespace }}
+  labels:
+    environment: {{ .Values.global.environment }}
+{{- end }}

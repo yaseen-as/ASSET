@@ -1,0 +1,13 @@
+apiVersion: v2
+name: swingtrader
+description: SwingTrade — asset management and trading platform for Indian equity markets (NSE/BSE)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - trading
+  - fintech
+  - equity
+maintainers:
+  - name: yaseen
+    email: abdulgafoorkv@ioss.in

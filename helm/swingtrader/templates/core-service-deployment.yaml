@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-service
+  labels:
+    app: core-service
+    app.kubernetes.io/component: backend
+    environment: {{ .Values.global.environment }}
+spec:
+  replicas: {{ .Values.coreService.replicas }}
+  selector:
+    matchLabels:
+      app: core-service
+  template:
+    metadata:
+      labels:
+        app: core-service
+        app.kubernetes.io/component: backend
+    spec:
+      initContainers:
+        {{- include "swingtrader.waitForPostgres" . | nindent 8 }}
+      containers:
+        - name: app
+          {{- if .Values.hotReload.enabled }}
+          image: {{ .Values.hotReload.nodeImage }}
+          command: ["sh", "-c"]
+          args:
+            - "rm -f /app/packages/shared/tsconfig.tsbuildinfo && (cd /app && npm run build --workspace=packages/shared) && npm run dev"
+          {{- else }}
+          image: {{ .Values.coreService.image.repository }}:{{ .Values.coreService.image.tag }}
+          {{- end }}
+          workingDir: {{ .Values.coreService.workingDir }}
+          ports:
+            - containerPort: {{ .Values.coreService.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: core-service-config
+            - secretRef:
+                name: core-service-secret
+          {{- if .Values.hotReload.enabled }}
+          env:
+            - name: NODE_ENV
+              value: development
+          volumeMounts:
+            {{- include "swingtrader.hotReloadVolumeMount" . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.coreService.probes.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.coreService.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.coreService.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          {{- end }}
+          {{- with .Values.coreService.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- if .Values.hotReload.enabled }}
+      volumes:
+        {{- include "swingtrader.hotReloadVolume" . | nindent 8 }}
+      {{- end }}
