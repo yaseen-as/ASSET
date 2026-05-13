@@ -93,13 +93,37 @@ router.use(
   })
 );
 
-// ─── Recommendations  /v1/recommendations/* → insights-service:/recommendations
+// ─── Recommendations  /v1/recommendations/* → recommendation-service:/recommendations
+// V2 ML-based. The V1 rule engine inside insights-service is kept as
+// internal-only fallback (not exposed via the gateway anymore).
 router.use(
   '/v1/recommendations',
   createProxyMiddleware({
-    target: config.services.insights,
+    target: config.services.recommendation,
     changeOrigin: true,
     pathRewrite: { '^/v1/recommendations': '/recommendations' },
+    on: { proxyReq: makeProxyHandler() },
+  })
+);
+
+// ─── Models  /v1/models/* → recommendation-service:/models ──────────────────
+router.use(
+  '/v1/models',
+  createProxyMiddleware({
+    target: config.services.recommendation,
+    changeOrigin: true,
+    pathRewrite: { '^/v1/models': '/models' },
+    on: { proxyReq: makeProxyHandler() },
+  })
+);
+
+// ─── Features  /v1/features/* → feature-service:/features ───────────────────
+router.use(
+  '/v1/features',
+  createProxyMiddleware({
+    target: config.services.feature,
+    changeOrigin: true,
+    pathRewrite: { '^/v1/features': '/features' },
     on: { proxyReq: makeProxyHandler() },
   })
 );

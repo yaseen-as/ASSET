@@ -18,6 +18,8 @@ export const config = {
   services: {
     core: process.env.CORE_SERVICE_URL || 'http://localhost:3001',
     insights: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
+    recommendation: process.env.RECOMMENDATION_SERVICE_URL || 'http://localhost:3005',
+    feature: process.env.FEATURE_SERVICE_URL || 'http://localhost:3006',
     backtest: process.env.BACKTEST_SERVICE_URL || 'http://localhost:3007',
   },
 

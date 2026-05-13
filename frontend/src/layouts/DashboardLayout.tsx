@@ -13,6 +13,8 @@ import {
   Activity,
   ShoppingCart,
   FileText,
+  FlaskConical,
+  Cpu,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useAuthStore } from '@/stores/auth.store';
@@ -27,6 +29,8 @@ const navItems = [
   { to: '/watchlist', label: 'Watchlist', icon: Eye },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/recommendations', label: 'Signals', icon: Lightbulb },
+  { to: '/backtest', label: 'Backtest', icon: FlaskConical },
+  { to: '/models', label: 'Models', icon: Cpu },
   { to: '/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/paper-trading', label: 'Paper Trading', icon: FileText },
   { to: '/broker', label: 'Broker', icon: Link2 },

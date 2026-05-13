@@ -18,6 +18,8 @@
     "core": "npm run dev --workspace=services/core-service",
     "insights": "npm run dev --workspace=services/insights-service",
     "backtest": "npm run dev --workspace=services/backtest-service",
+    "recommendation": "npm run dev --workspace=services/recommendation-service",
+    "feature": "npm run dev --workspace=services/feature-service",
     "web": "npm run dev --workspace=frontend"
   },
   "devDependencies": {

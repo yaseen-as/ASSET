@@ -35,6 +35,16 @@ backtestService:
   probes:
     enabled: false
 
+featureService:
+  replicas: 1
+  probes:
+    enabled: false
+
+recommendationService:
+  replicas: 1
+  probes:
+    enabled: false
+
 frontend:
   replicas: 1
   probes:

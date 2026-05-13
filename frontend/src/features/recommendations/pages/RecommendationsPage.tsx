@@ -1,183 +1,196 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '@/lib/api';
-import { Lightbulb, TrendingUp, TrendingDown, RefreshCw, ShoppingCart } from 'lucide-react';
+import { Lightbulb, RefreshCw, ShoppingCart, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { fetchTopRecommendations, rankUniverse, type RankedRow } from '@/lib/ml-api';
 
-// Normalized signal shape used by this page
-interface Signal {
-  id: string;
-  symbol: string;
-  exchange: string;
-  signalType: 'BUY' | 'SELL' | 'HOLD';
-  confidence: number; // 0–100
-  source: string;
-  reasoning: string;
-  createdAt: string;
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+function ScoreBar({ label, value }: { label: string; value: number | null }) {
+  const v = value ?? 0;
+  const pct = Math.max(0, Math.min(100, v * 100));
+  const color = v >= 0.6 ? 'bg-green-500' : v >= 0.4 ? 'bg-yellow-500' : 'bg-gray-600';
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>{label}</span>
+        <span className="font-mono">{value === null ? '—' : v.toFixed(3)}</span>
+      </div>
+      <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-gray-800">
+        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
 }
-
-// Normalize raw API rows → Signal
-// Handles both camelCase (getSignals) and snake_case (getUserRecommendations raw join)
-function normalize(raw: any): Signal {
-  return {
-    id: raw.id,
-    symbol: raw.symbol,
-    exchange: raw.exchange,
-    signalType: raw.signalType ?? raw.signal_type ?? 'HOLD',
-    confidence: raw.confidence ?? 0,
-    source: raw.source ?? 'rule_engine',
-    reasoning: raw.reasoning ?? '',
-    createdAt: raw.createdAt ?? raw.created_at ?? '',
-  };
-}
-
-const actionColor = {
-  BUY: 'text-green-400',
-  SELL: 'text-red-400',
-  HOLD: 'text-yellow-400',
-};
-
-const actionBg = {
-  BUY: 'bg-green-900/30 border-green-800',
-  SELL: 'bg-red-900/30 border-red-800',
-  HOLD: 'bg-yellow-900/30 border-yellow-800',
-};
 
 export default function RecommendationsPage() {
   const navigate = useNavigate();
-  const [signals, setSignals] = useState<Signal[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [tab, setTab] = useState<'personalized' | 'all'>('personalized');
+  const [date, setDate] = useState(todayIso());
+  const [limit, setLimit] = useState(20);
+  const [rows, setRows] = useState<RankedRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [ranking, setRanking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  const fetchSignals = async (view: typeof tab) => {
-    setIsLoading(true);
+  async function load() {
+    setLoading(true);
+    setError(null);
     try {
-      if (view === 'personalized') {
-        try {
-          const { data } = await api.get('/recommendations/personalized');
-          setSignals((data.data || []).map(normalize));
-          return;
-        } catch {
-          // fall through to general
-        }
-      }
-      const { data } = await api.get('/recommendations?limit=50');
-      setSignals((data.data || []).map(normalize));
+      const data = await fetchTopRecommendations(date, limit);
+      setRows(data);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message ?? e?.message ?? 'Failed to load');
+      setRows([]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
+
+  async function runRanking() {
+    setRanking(true);
+    try {
+      await rankUniverse('NSE', date, 100);
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message ?? 'Ranking failed');
+    } finally {
+      setRanking(false);
+    }
+  }
 
   useEffect(() => {
-    fetchSignals(tab);
-  }, [tab]);
+    load();
+  }, [date, limit]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-6 w-6 text-brand-400" />
-          <h1 className="text-2xl font-bold">Recommendations</h1>
+          <h1 className="text-2xl font-bold">ML Recommendations</h1>
         </div>
-        <button
-          onClick={() => fetchSignals(tab)}
-          className="btn-secondary flex items-center gap-2"
-          disabled={isLoading}
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-lg border border-gray-800 bg-gray-900 p-1 w-fit">
-        {(['personalized', 'all'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              tab === t ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-gray-200'
-            }`}
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm"
+          />
+          <select
+            value={limit}
+            onChange={(e) => setLimit(parseInt(e.target.value, 10))}
+            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm"
           >
-            {t === 'personalized' ? 'For You' : 'All Signals'}
+            <option value={10}>Top 10</option>
+            <option value={20}>Top 20</option>
+            <option value={50}>Top 50</option>
+            <option value={100}>Top 100</option>
+          </select>
+          <button onClick={load} className="btn-secondary flex items-center gap-2" disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
-        ))}
+          <button onClick={runRanking} className="btn-primary flex items-center gap-2" disabled={ranking}>
+            <TrendingUp className={`h-4 w-4 ${ranking ? 'animate-pulse' : ''}`} />
+            Run Ranking
+          </button>
+        </div>
       </div>
 
-      {isLoading ? (
-        <p className="text-gray-500">Analyzing market data…</p>
-      ) : signals.length === 0 ? (
+      {error && (
+        <div className="card border-red-900 bg-red-950/40 text-sm text-red-300">{error}</div>
+      )}
+
+      {loading ? (
+        <p className="text-gray-500">Loading…</p>
+      ) : rows.length === 0 ? (
         <div className="card py-12 text-center">
           <Lightbulb className="mx-auto h-12 w-12 text-gray-600" />
-          <p className="mt-4 text-gray-500">No signals available right now.</p>
+          <p className="mt-4 text-gray-500">No ranked symbols for {date}.</p>
           <p className="text-sm text-gray-600">
-            Signals are generated after market close from technical analysis of tracked symbols.
+            Try a different date or click <strong>Run Ranking</strong> to score the universe.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {signals.map((s) => (
-            <div key={s.id} className={`card border ${actionBg[s.signalType]}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold">{s.symbol}</h3>
-                  <p className="text-xs text-gray-400">{s.exchange}</p>
-                </div>
-                <span className={`flex items-center gap-1 text-lg font-bold ${actionColor[s.signalType]}`}>
-                  {s.signalType === 'BUY' && <TrendingUp className="h-5 w-5" />}
-                  {s.signalType === 'SELL' && <TrendingDown className="h-5 w-5" />}
-                  {s.signalType}
-                </span>
-              </div>
-
-              {/* Confidence bar */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Confidence</span>
-                  <span className="font-medium">{s.confidence.toFixed(0)}%</span>
-                </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-800">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      s.signalType === 'BUY'
-                        ? 'bg-green-500'
-                        : s.signalType === 'SELL'
-                        ? 'bg-red-500'
-                        : 'bg-yellow-500'
-                    }`}
-                    style={{ width: `${s.confidence}%` }}
-                  />
-                </div>
-              </div>
-
-              <p className="mt-3 text-sm text-gray-300">{s.reasoning}</p>
-
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
-                <span className="capitalize">{s.source.replace('_', ' ')}</span>
-                <span>
-                  {s.createdAt
-                    ? new Date(s.createdAt).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''}
-                </span>
-              </div>
-
-              {s.signalType !== 'HOLD' && (
-                <button
-                  onClick={() => navigate(`/orders?symbol=${s.symbol}&exchange=${s.exchange}&action=${s.signalType}`)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600/20 px-3 py-2 text-sm font-medium text-brand-400 hover:bg-brand-600/30 transition-colors"
-                >
-                  <ShoppingCart className="h-3.5 w-3.5" />
-                  Trade {s.symbol}
-                </button>
-              )}
-            </div>
-          ))}
+        <div className="card overflow-hidden p-0">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-800/50 text-xs uppercase text-gray-400">
+              <tr>
+                <th className="px-3 py-2 text-left">Rank</th>
+                <th className="px-3 py-2 text-left">Symbol</th>
+                <th className="px-3 py-2 text-right">Final</th>
+                <th className="px-3 py-2 text-right hidden md:table-cell">Tech</th>
+                <th className="px-3 py-2 text-right hidden md:table-cell">Fund</th>
+                <th className="px-3 py-2 text-right hidden md:table-cell">Sent</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <RecRow
+                  key={r.id}
+                  row={r}
+                  expanded={expanded === r.id}
+                  onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+                  onTrade={() => navigate(`/orders?symbol=${r.symbol}&exchange=${r.exchange}&action=BUY`)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
+  );
+}
+
+function RecRow({
+  row,
+  expanded,
+  onToggle,
+  onTrade,
+}: {
+  row: RankedRow;
+  expanded: boolean;
+  onToggle: () => void;
+  onTrade: () => void;
+}) {
+  return (
+    <>
+      <tr className="border-t border-gray-800 hover:bg-gray-800/30 cursor-pointer" onClick={onToggle}>
+        <td className="px-3 py-2 font-mono">{row.rank ?? '—'}</td>
+        <td className="px-3 py-2">
+          <div className="font-semibold">{row.symbol}</div>
+          <div className="text-xs text-gray-500">{row.exchange}</div>
+        </td>
+        <td className="px-3 py-2 text-right font-mono">{row.final_score.toFixed(3)}</td>
+        <td className="px-3 py-2 text-right font-mono text-gray-400 hidden md:table-cell">
+          {row.technical_score?.toFixed(3) ?? '—'}
+        </td>
+        <td className="px-3 py-2 text-right font-mono text-gray-400 hidden md:table-cell">
+          {row.fundamental_score?.toFixed(3) ?? '—'}
+        </td>
+        <td className="px-3 py-2 text-right font-mono text-gray-400 hidden md:table-cell">
+          {row.sentiment_score?.toFixed(3) ?? '—'}
+        </td>
+        <td className="px-3 py-2 text-right">
+          {expanded ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-t border-gray-800 bg-gray-900/50">
+          <td colSpan={7} className="px-4 py-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+              <ScoreBar label="Technical" value={row.technical_score} />
+              <ScoreBar label="Fundamental" value={row.fundamental_score} />
+              <ScoreBar label="Sentiment" value={row.sentiment_score} />
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); onTrade(); }} className="btn-primary text-sm">
+              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+              Trade {row.symbol}
+            </button>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

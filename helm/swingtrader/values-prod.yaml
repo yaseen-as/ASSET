@@ -58,6 +58,30 @@ backtestService:
       memory: 2Gi
       cpu: 2000m
 
+featureService:
+  replicas: 2
+  image:
+    tag: 1.0.0
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+recommendationService:
+  replicas: 2
+  image:
+    tag: 1.0.0
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+
 frontend:
   replicas: 3
   image:

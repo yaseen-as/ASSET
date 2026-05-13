@@ -54,6 +54,8 @@ apiGateway:
     NODE_ENV: production
     CORE_SERVICE_URL: http://core-service
     INSIGHTS_SERVICE_URL: http://insights-service
+    RECOMMENDATION_SERVICE_URL: http://recommendation-service
+    FEATURE_SERVICE_URL: http://feature-service
     BACKTEST_SERVICE_URL: http://backtest-service
     REDIS_URL: redis://redis-service:6379
     # Must match core-service JWT_SECRET
@@ -90,6 +92,58 @@ coreService:
     UPSTOX_CLIENT_SECRET: "53sgr84l0u"
     DB_PASSWORD: "admin123"
     JWT_SECRET: "dev-jwt-secret-change-this-in-production-min-32chars"
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Feature Service ──────────────────────────────────────────────────────────
+featureService:
+  replicas: 1
+  image:
+    repository: yaseenas/feature-service
+    tag: latest
+  workingDir: /app/services/feature-service
+  port: 3006
+  config:
+    SERVICE_NAME: feature-service
+    PORT: "3006"
+    NODE_ENV: production
+    DB_HOST: postgres-service.database.svc.cluster.local
+    DB_PORT: "5432"
+    DB_NAME: insights_db
+    DB_USER: admin
+    DB_PASSWORD: admin123
+    REDIS_URL: redis://redis-service:6379
+    MATERIALIZATION_HOUR: "0"
+    MATERIALIZATION_CRON_ENABLED: "false"
+    FEATURE_CACHE_TTL_SECONDS: "86400"
+  resources: {}
+  probes:
+    enabled: true
+
+# ─── Recommendation Service ───────────────────────────────────────────────────
+recommendationService:
+  replicas: 1
+  image:
+    repository: yaseenas/recommendation-service
+    tag: latest
+  workingDir: /app/services/recommendation-service
+  port: 3005
+  config:
+    SERVICE_NAME: recommendation-service
+    PORT: "3005"
+    NODE_ENV: production
+    DB_HOST: postgres-service.database.svc.cluster.local
+    DB_PORT: "5432"
+    DB_NAME: insights_db
+    DB_USER: admin
+    DB_PASSWORD: admin123
+    REDIS_URL: redis://redis-service:6379
+    FEATURE_SERVICE_URL: http://feature-service
+    DEFAULT_MODEL_NAME: meta
+    MODEL_CACHE_SIZE: "5"
+    DAILY_RANKING_CRON_ENABLED: "false"
+    PERFORMANCE_BACKFILL_CRON_ENABLED: "false"
   resources: {}
   probes:
     enabled: true

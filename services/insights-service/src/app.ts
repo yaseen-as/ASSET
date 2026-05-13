@@ -24,7 +24,9 @@ app.get('/health', (_req, res) => {
 // Market domain: quotes, historical OHLCV, technical indicators
 app.use('', marketRoutes);
 
-// Recommendations domain: signals and personalized recommendations
+// V1 rule-engine recommendations — kept for internal/legacy callers only.
+// External traffic now hits recommendation-service via the api-gateway.
+// Will be removed once no internal service depends on it.
 app.use('/recommendations', recommendationRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -16,6 +16,8 @@ import PortfolioPage from '@/features/portfolio/pages/PortfolioPage';
 import WatchlistPage from '@/features/portfolio/pages/WatchlistPage';
 import AlertsPage from '@/features/alerts/pages/AlertsPage';
 import RecommendationsPage from '@/features/recommendations/pages/RecommendationsPage';
+import BacktestPage from '@/features/backtest/pages/BacktestPage';
+import ModelsPage from '@/features/models/pages/ModelsPage';
 import MarketPage from '@/features/market/pages/MarketPage';
 import OrderPage from '@/features/orders/pages/OrderPage';
 import PaperTradingPage from '@/features/paper-trading/pages/PaperTradingPage';
@@ -53,6 +55,8 @@ export default function App() {
         <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/recommendations" element={<RecommendationsPage />} />
+        <Route path="/backtest" element={<BacktestPage />} />
+        <Route path="/models" element={<ModelsPage />} />
         <Route path="/orders" element={<OrderPage />} />
         <Route path="/paper-trading" element={<PaperTradingPage />} />
         <Route path="/broker" element={<BrokerPage />} />
