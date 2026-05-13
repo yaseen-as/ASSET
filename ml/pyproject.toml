@@ -1,0 +1,32 @@
+[project]
+name = "swingtrader-ml"
+version = "0.1.0"
+description = "Offline training pipeline for SwingTrade V2 ML models"
+requires-python = ">=3.11"
+dependencies = [
+  "pandas>=2.2.0",
+  "numpy>=1.26.0",
+  "scikit-learn>=1.4.0",
+  "lightgbm>=4.3.0",
+  "onnx>=1.16.0",
+  "onnxmltools>=1.12.0",
+  "onnxruntime>=1.18.0",
+  "psycopg2-binary>=2.9.9",
+  "sqlalchemy>=2.0.0",
+  "python-dotenv>=1.0.0",
+  "ta>=0.11.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "ipykernel",
+  "matplotlib",
+  "pytest>=8.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pipelines*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

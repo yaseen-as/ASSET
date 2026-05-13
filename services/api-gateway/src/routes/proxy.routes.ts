@@ -104,6 +104,17 @@ router.use(
   })
 );
 
+// ─── Backtest  /v1/backtest/* → backtest-service:/backtest ──────────────────
+router.use(
+  '/v1/backtest',
+  createProxyMiddleware({
+    target: config.services.backtest,
+    changeOrigin: true,
+    pathRewrite: { '^/v1/backtest': '/backtest' },
+    on: { proxyReq: makeProxyHandler() },
+  })
+);
+
 // ─── Alerts + Notifications → core-service ──────────────────────────────────
 router.use(
   '/v1/alerts',

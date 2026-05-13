@@ -18,6 +18,7 @@ export const config = {
   services: {
     core: process.env.CORE_SERVICE_URL || 'http://localhost:3001',
     insights: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
+    backtest: process.env.BACKTEST_SERVICE_URL || 'http://localhost:3007',
   },
 
   rateLimit: {

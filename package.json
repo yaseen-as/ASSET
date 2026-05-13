@@ -17,6 +17,7 @@
     "gateway": "npm run dev --workspace=services/api-gateway",
     "core": "npm run dev --workspace=services/core-service",
     "insights": "npm run dev --workspace=services/insights-service",
+    "backtest": "npm run dev --workspace=services/backtest-service",
     "web": "npm run dev --workspace=frontend"
   },
   "devDependencies": {

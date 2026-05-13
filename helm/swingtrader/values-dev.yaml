@@ -30,6 +30,11 @@ insightsService:
   probes:
     enabled: false
 
+backtestService:
+  replicas: 1
+  probes:
+    enabled: false
+
 frontend:
   replicas: 1
   probes:
