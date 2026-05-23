@@ -142,7 +142,13 @@ start_service "frontend" "frontend"
 
 
 # ---------------------------------
-# Keep Alive
+# Keep Alive + live log stream
+# tail -F prints "==> logs/X.log <==" headers when output switches between
+# files, so you can see at a glance which service produced each chunk.
+# Files are still on disk under logs/, so you can grep them after CTRL+C.
+# Set WATCH=backend (default) to follow only backend services;
+# WATCH=all     follows backend + frontend;
+# WATCH=<glob>  follows whatever you pass, e.g. WATCH='logs/insights-*.log'.
 # ---------------------------------
 echo ""
 echo "======================================"
@@ -153,5 +159,16 @@ echo "🌐 Web:     http://localhost:5173"
 echo "🛑 CTRL+C to stop everything"
 echo "======================================"
 echo ""
+echo "📜 Streaming logs (CTRL+C to stop all services)..."
+echo ""
 
-while true; do sleep 10; done
+case "${WATCH:-backend}" in
+    backend) WATCH_GLOB="$ROOT_DIR/logs/core-service.log $ROOT_DIR/logs/insights-service.log $ROOT_DIR/logs/insights-worker.log $ROOT_DIR/logs/api-gateway.log" ;;
+    all)     WATCH_GLOB="$ROOT_DIR/logs/*.log" ;;
+    *)       WATCH_GLOB="$WATCH" ;;
+esac
+
+# --retry handles the case where a log file hasn't been created yet (a
+# service is slow to spawn); -n0 starts the stream from the current end so
+# we don't replay the boot lines that already scrolled past above.
+tail --retry -n0 -F $WATCH_GLOB
