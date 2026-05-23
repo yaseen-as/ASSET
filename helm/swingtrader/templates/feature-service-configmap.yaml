@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: feature-service-config
-data:
-{{- range $key, $value := .Values.featureService.config }}
-  {{ $key }}: {{ $value | quote }}
-{{- end }}

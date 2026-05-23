@@ -15,10 +15,19 @@ export const config = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
   coreServiceUrl: process.env.CORE_SERVICE_URL || 'http://core-service',
-  signalCacheHours: parseInt(process.env.SIGNAL_CACHE_HOURS || '4', 10),
-  signalWeights: {
-    ruleEngine: parseFloat(process.env.WEIGHT_RULE_ENGINE || '0.4'),
-    mlModel: parseFloat(process.env.WEIGHT_ML_MODEL || '0.4'),
-    sentiment: parseFloat(process.env.WEIGHT_SENTIMENT || '0.2'),
-  },
+
+  // Feature store materialization
+  materializationHour: parseInt(process.env.MATERIALIZATION_HOUR || '0', 10),
+  materializationCronEnabled: process.env.MATERIALIZATION_CRON_ENABLED === 'true',
+  featureCacheTtlSeconds: parseInt(process.env.FEATURE_CACHE_TTL_SECONDS || '86400', 10),
+
+  // ML inference + ranking
+  defaultModelName: process.env.DEFAULT_MODEL_NAME || 'meta',
+  modelCacheSize: parseInt(process.env.MODEL_CACHE_SIZE || '5', 10),
+  dailyRankingCronEnabled: process.env.DAILY_RANKING_CRON_ENABLED === 'true',
+  performanceBackfillCronEnabled: process.env.PERFORMANCE_BACKFILL_CRON_ENABLED === 'true',
+
+  // Backtest (BullMQ queue + walk-forward simulator)
+  backtestQueueName: process.env.BACKTEST_QUEUE_NAME || 'backtest-runs',
+  backtestConcurrency: parseInt(process.env.BACKTEST_CONCURRENCY || '1', 10),
 };

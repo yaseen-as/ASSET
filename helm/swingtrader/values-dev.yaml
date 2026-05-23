@@ -30,20 +30,9 @@ insightsService:
   probes:
     enabled: false
 
-backtestService:
+insightsWorker:
+  enabled: true
   replicas: 1
-  probes:
-    enabled: false
-
-featureService:
-  replicas: 1
-  probes:
-    enabled: false
-
-recommendationService:
-  replicas: 1
-  probes:
-    enabled: false
 
 frontend:
   replicas: 1

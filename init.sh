@@ -8,6 +8,45 @@ mkdir -p logs
 
 PIDS=()
 
+
+# ---------------------------------
+# Step 0a: Ensure Node ≥ 18 (project's required engine).
+# If nvm is available, switch into a 20.x install; otherwise the user's
+# default node is used and a warning is printed.
+# ---------------------------------
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.nvm/nvm.sh"
+    if nvm ls 20 >/dev/null 2>&1; then
+        nvm use 20 >/dev/null
+        echo "📦 Using Node $(node --version) via nvm"
+    fi
+fi
+NODE_MAJOR=$(node --version | sed 's/^v\([0-9]*\).*/\1/')
+if [ "$NODE_MAJOR" -lt 18 ]; then
+    echo "❌ Node ≥ 18 required (found $(node --version)). Install Node 20 (nvm install 20) and re-run."
+    exit 1
+fi
+
+
+# ---------------------------------
+# Step 0b: Verify Postgres + Redis are reachable.
+# Services boot via `ts-node-dev --respawn`, so a missing DB causes a
+# silent crash-and-restart loop in the logs. Fail loud here instead.
+# ---------------------------------
+need_port() {
+    local name="$1" port="$2"
+    if ! (echo > "/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+        echo "❌ $name not reachable on localhost:$port"
+        echo "   Hint: docker run -d --name pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:15"
+        echo "   Hint: docker run -d --name redis -p 6379:6379 redis:alpine"
+        return 1
+    fi
+    echo "✅ $name reachable on localhost:$port"
+}
+need_port "Postgres" 5432 || exit 1
+need_port "Redis"    6379 || exit 1
+
 # ---------------------------------
 # Graceful Shutdown Handler
 # ---------------------------------
@@ -59,19 +98,21 @@ fi
 
 # ---------------------------------
 # Start Service Function
+# Args: name, dir, [npm_script=dev]
 # ---------------------------------
 start_service() {
     NAME="$1"
     DIR="$2"
+    SCRIPT="${3:-dev}"
 
     if [ ! -d "$DIR" ]; then
         echo "⚠️  Skipping $NAME — $DIR not found"
         return
     fi
 
-    echo "▶️  Starting $NAME..."
+    echo "▶️  Starting $NAME (npm run $SCRIPT)..."
     cd "$DIR"
-    npm run dev > "$ROOT_DIR/logs/$NAME.log" 2>&1 &
+    npm run "$SCRIPT" > "$ROOT_DIR/logs/$NAME.log" 2>&1 &
     PID=$!
     PIDS+=("$PID")
     echo "✅ $NAME started (PID: $PID) → logs/$NAME.log"
@@ -82,16 +123,15 @@ start_service() {
 
 # ---------------------------------
 # Step 4: Start Backend Services
-# Order matters: core/insights/feature first so downstream callers find them
+# Order: core + insights (HTTP) first, then insights-worker (background
+# crons + BullMQ consumer), then api-gateway in front.
 # ---------------------------------
 echo "🟢 Starting backend services..."
 
-start_service "core-service"           "services/core-service"
-start_service "insights-service"       "services/insights-service"
-start_service "feature-service"        "services/feature-service"
-start_service "recommendation-service" "services/recommendation-service"
-start_service "backtest-service"       "services/backtest-service"
-start_service "api-gateway"            "services/api-gateway"
+start_service "core-service"     "services/core-service"
+start_service "insights-service" "services/insights-service"
+start_service "insights-worker"  "services/insights-service" "dev:worker"
+start_service "api-gateway"      "services/api-gateway"
 
 
 # ---------------------------------

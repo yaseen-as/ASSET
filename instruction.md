@@ -7,36 +7,43 @@ End-to-end runbook for the ML recommendation platform: install, train, score, ba
 ## 1. System Overview
 
 ```
-                          ┌──────────────┐
-                          │  Frontend    │
-                          └──────┬───────┘
-                                 │
-                          ┌──────▼────────┐  port 3000
-                          │ api-gateway   │  JWT, rate limit, proxy
-                          └──┬───┬───┬───┬┘
-            ┌────────────────┘   │   │   └────────────────────┐
-            ▼                    ▼   ▼                        ▼
-┌────────────────────┐  ┌────────────────┐  ┌──────────────────────┐
-│  core-service 3001 │  │ insights 3004  │  │ recommendation 3005  │  ← V2 ML
-│  auth/users/broker │  │ quotes/OHLCV   │  │  ONNX inference      │
-│  portfolio/alerts  │  │ indicators     │  │  daily ranking cron  │
-└────────────────────┘  └────────────────┘  └──────────┬───────────┘
-                                                       │ HTTP
-                                            ┌──────────▼──────────┐
-                                            │  feature   3006     │  ← V2
-                                            │  feature_store CRUD │
-                                            │  materialization    │
-                                            └─────────────────────┘
-                                            ┌─────────────────────┐
-                                            │  backtest  3007     │  ← V2
-                                            │  walk-forward sim   │
-                                            │  BullMQ workers     │
-                                            └─────────────────────┘
+                       ┌──────────────┐
+                       │  Frontend    │
+                       └──────┬───────┘
+                              │
+                       ┌──────▼────────┐  port 3000
+                       │ api-gateway   │  JWT, rate limit, proxy
+                       └──┬─────────┬──┘
+                ┌─────────┘         └─────────┐
+                ▼                             ▼
+   ┌────────────────────┐          ┌─────────────────────────────────┐
+   │  core-service 3001 │          │     insights-service 3004       │
+   │  auth/users/broker │          │   src/shared/    registry+types │
+   │  portfolio/alerts  │          │   src/market/    OHLCV          │
+   └────────────────────┘          │   src/features/  store          │
+                                   │   src/recommendations/    ONNX  │
+                                   │   src/backtest/    sim+queue    │
+                                   └──────────┬──────────────────────┘
+                                              │ same image, no HTTP
+                                              ▼
+                                   ┌─────────────────────────────────┐
+                                   │   insights-worker (no port)     │
+                                   │   feature materialization       │
+                                   │   daily meta ranking cron       │
+                                   │   performance backfill cron     │
+                                   │   backtest BullMQ consumer      │
+                                   └─────────────────────────────────┘
 
 Data plane:
-  PostgreSQL — core_db, insights_db (recommendations schema holds all V2 tables)
-  Redis      — BullMQ queues, feature/score caches, pub/sub for job completion
-  ML offline — Python (LightGBM + ONNX export) outside the cluster
+  PostgreSQL — core_db, insights_db
+                 insights_db schemas: market, recommendations
+                 (recommendations holds feature_store, model_registry,
+                  model_artifacts, *_scores, final_scores, backtest_results,
+                  performance_logs)
+  Redis      — BullMQ queue (backtest-runs), pub/sub for job-done notifications,
+                quote tick cache, symbol master cache
+  ML offline — Python (LightGBM + ONNX export) outside the cluster, writes
+                to recommendations.model_registry over PG
 ```
 
 ---
@@ -110,11 +117,13 @@ Schemas created on first start:
 | `core_db` | auth, users, broker, portfolio, engagement, core |
 | `insights_db` | market, recommendations |
 
-V2 tables (in `insights_db.recommendations`):
+Tables in `insights_db.recommendations`:
 - `feature_store` — partitioned monthly by `as_of_date`
-- `model_registry` + `model_artifacts` — versioned ONNX artifacts
+- `model_registry` + `model_artifacts` — versioned ONNX artifacts (BYTEA)
 - `technical_scores`, `fundamental_scores`, `sentiment_scores`, `final_scores`
 - `backtest_results`, `performance_logs`
+
+All migrations live in `services/insights-service/migrations/` (single Knex tracking table in the `market` schema). The post-consolidation insights-service owns every `insights_db` table.
 
 ---
 
@@ -195,7 +204,7 @@ curl -X POST http://localhost:3000/v1/models/<id>/promote \
   -H 'Content-Type: application/json' \
   -d '{"status":"production","rollout_percent":100}'
 ```
-The recommendation-service evicts its loader cache on promotion, so the next request serves the new artifact.
+The insights-service evicts its ONNX loader cache on promotion, so the next request serves the new artifact.
 
 ---
 
@@ -287,14 +296,14 @@ The deployments contain a `wait-for-postgres` init container, so K8s ordering is
 
 ```bash
 1. PostgreSQL + Redis up
-2. core-service     (npm run core)
-3. insights-service (npm run insights)
-4. feature-service  (npm run feature)
-5. recommendation-service (npm run recommendation)
-6. backtest-service (npm run backtest)
-7. api-gateway      (npm run gateway)
-8. frontend         (npm run web)
+2. core-service           (npm run core)
+3. insights-service       (npm run insights)         # HTTP pod
+4. insights-worker        (npm run insights-worker)  # crons + backtest BullMQ consumer (optional)
+5. api-gateway            (npm run gateway)
+6. frontend               (npm run web)
 ```
+
+The worker is optional for local dev — without it, `/v1/features/materialize` still works (HTTP-triggered), but the daily ranking + performance backfill crons and the backtest BullMQ consumer won't run.
 
 ---
 
@@ -302,13 +311,14 @@ The deployments contain a `wait-for-postgres` init container, so K8s ordering is
 
 ### 10.1 Build images
 ```bash
-# Each new service has its own Dockerfile.
-docker build -f services/recommendation-service/Dockerfile -t yaseenas/recommendation-service:1.0.0 .
-docker build -f services/feature-service/Dockerfile        -t yaseenas/feature-service:1.0.0 .
-docker build -f services/backtest-service/Dockerfile       -t yaseenas/backtest-service:1.0.0 .
-docker push yaseenas/recommendation-service:1.0.0
-docker push yaseenas/feature-service:1.0.0
-docker push yaseenas/backtest-service:1.0.0
+# Three images, one per service. The insights-service image is also used by
+# the insights-worker Deployment (same binary, different `command`).
+docker build -f services/api-gateway/Dockerfile        -t yaseenas/api-gateway:1.0.0 .
+docker build -f services/core-service/Dockerfile       -t yaseenas/core-service:1.0.0 .
+docker build -f services/insights-service/Dockerfile   -t yaseenas/insights-service:1.0.0 .
+docker push yaseenas/api-gateway:1.0.0
+docker push yaseenas/core-service:1.0.0
+docker push yaseenas/insights-service:1.0.0
 ```
 
 ### 10.2 Deploy with prod values
@@ -318,9 +328,11 @@ helm upgrade --install swingtrader ./helm/swingtrader \
   --set coreService.secrets.JWT_SECRET=<real-secret> \
   --set apiGateway.config.JWT_SECRET=<real-secret> \
   --set coreService.secrets.UPSTOX_CLIENT_SECRET=<real> \
-  --set recommendationService.config.DAILY_RANKING_CRON_ENABLED=true \
-  --set featureService.config.MATERIALIZATION_CRON_ENABLED=true
+  --set insightsService.config.DAILY_RANKING_CRON_ENABLED=true \
+  --set insightsService.config.MATERIALIZATION_CRON_ENABLED=true \
+  --set insightsService.config.PERFORMANCE_BACKFILL_CRON_ENABLED=true
 ```
+Cron flags live on `insightsService.config` so both pods read them, but only the worker pod (`worker.ts`) actually starts the crons. The HTTP pod never does.
 
 ### 10.3 Rollback
 ```bash
@@ -349,11 +361,12 @@ helm rollback swingtrader <revision>
 
 | Pressure | Symptom | Action |
 |----------|---------|--------|
-| API latency | p99 spikes on `/v1/recommendations/top` | scale `recommendation-service` (CPU-bound on ONNX) |
-| Feature lag | last `feature_store` row > 26h old | scale `feature-service` and/or shard materialization by symbol prefix |
-| Backtest queue depth | `bull:backtest-runs` > 50 | scale `backtest-service` workers via `BACKTEST_CONCURRENCY` or add replicas |
+| API latency | p99 spikes on `/v1/recommendations/top` | scale `insights-service` HTTP pod (it serves cached scores from DB; check that ONNX batch jobs aren't accidentally on this pod) |
+| Feature lag | last `feature_store` row > 26h old | check `insights-worker` is up; trigger `POST /v1/features/materialize` manually; consider sharding materialization by symbol prefix |
+| Backtest queue depth | `bull:backtest-runs` > 50 | scale `insights-worker` replicas or raise `BACKTEST_CONCURRENCY` |
 | PG saturation | pool > 80% for 5+ min | bump pg pool max (currently 10) or add read replica |
-| ONNX memory | OOMKilled on recommendation-service | reduce `MODEL_CACHE_SIZE` (default 5) |
+| ONNX memory | OOMKilled on `insights-worker` | reduce `MODEL_CACHE_SIZE` (default 5) |
+| Worker pod CPU starvation | both backtest and ONNX batch competing | run `insights-worker` at higher CPU limit, or split into two worker Deployments later (different `command:`) |
 
 ---
 
@@ -365,9 +378,9 @@ The given model name has no row with `status` in `('production','canary')`. Trai
 ### Backtest stuck in `running` forever
 Check the worker logs:
 ```bash
-kubectl logs deploy/backtest-service -c app
+kubectl logs deploy/insights-worker -c app
 ```
-Likely causes: missing scores in `<name>_scores` for the date range, or missing OHLCV bars. The backtest worker logs the symbol/date that failed.
+Likely causes: missing scores in `<name>_scores` for the date range, or missing OHLCV bars. The backtest worker logs the symbol/date that failed. If `insights-worker` isn't running, the queue has no consumer — start it.
 
 ### `/v1/features/:symbol` returns 404
 The materialization cron hasn't run for that date, or the symbol had a price-data gap during feature computation. Trigger manually:
@@ -375,7 +388,7 @@ The materialization cron hasn't run for that date, or the symbol had a price-dat
 curl -X POST http://localhost:3000/v1/features/materialize -d '{"date":"2026-05-13"}'
 ```
 
-### `Model not in registry: <id>` from recommendation-service
+### `Model not in registry: <id>` from insights-service
 Stale frontend caching the old model id. Refresh and re-fetch `/v1/recommendations/top` (uses the active meta model, no client-side id needed).
 
 ### ONNX inference returns wrong probabilities
@@ -416,20 +429,22 @@ Local Node < 14 can't run the install script. The k8s container uses node:20-alp
 
 ---
 
-## 14. API Reference (V2 additions)
+## 14. API Reference (ML additions)
 
-| Method | Path | Service | Description |
-|--------|------|---------|-------------|
-| GET | `/v1/features/:exchange/:symbol?date=&set=` | feature | single feature vector |
-| GET | `/v1/features/batch?exchange=&date=&set=&symbols=A,B` | feature | bulk fetch |
-| POST | `/v1/features/materialize` | feature | trigger materialization for `{date}` |
-| GET | `/v1/recommendations/top?date=&limit=` | recommendation | ranked list |
-| POST | `/v1/recommendations/score` | recommendation | single-symbol on-demand |
-| POST | `/v1/recommendations/rank` | recommendation | run universe ranking now |
-| GET | `/v1/models?name=technical` | recommendation | list models |
-| GET | `/v1/models/:id` | recommendation | model detail |
-| POST | `/v1/models/:id/promote` | recommendation | change status + rollout_percent |
-| POST | `/v1/backtest/runs` | backtest | submit async backtest |
+All ML endpoints are served by `insights-service` (HTTP pod). External callers go through the gateway at `/v1/*`.
+
+| Method | Path | Module | Description |
+|--------|------|--------|-------------|
+| GET | `/v1/features/:exchange/:symbol?date=&set=` | features | single feature vector |
+| GET | `/v1/features/batch?exchange=&date=&set=&symbols=A,B` | features | bulk fetch |
+| POST | `/v1/features/materialize` | features | trigger materialization for `{date}` |
+| GET | `/v1/recommendations/top?date=&limit=` | recommendations | ranked list |
+| POST | `/v1/recommendations/score` | recommendations | single-symbol on-demand |
+| POST | `/v1/recommendations/rank` | recommendations | run universe ranking now |
+| GET | `/v1/models?name=technical` | recommendations | list models |
+| GET | `/v1/models/:id` | recommendations | model detail |
+| POST | `/v1/models/:id/promote` | recommendations | change status + rollout_percent (evicts ONNX cache) |
+| POST | `/v1/backtest/runs` | backtest | submit async backtest (enqueues BullMQ job) |
 | GET | `/v1/backtest/runs/:id` | backtest | poll status + results |
 | GET | `/v1/backtest/results?model_id=&limit=` | backtest | history per model |
 

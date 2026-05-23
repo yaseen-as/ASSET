@@ -93,46 +93,46 @@ router.use(
   })
 );
 
-// ─── Recommendations  /v1/recommendations/* → recommendation-service:/recommendations
-// V2 ML-based. The V1 rule engine inside insights-service is kept as
-// internal-only fallback (not exposed via the gateway anymore).
+// ─── Recommendations  /v1/recommendations/* → insights-service:/recommendations
+// V2 ML inference + ranking. The V1 rule engine has been deleted (folded in
+// alongside the ML modules inside insights-service).
 router.use(
   '/v1/recommendations',
   createProxyMiddleware({
-    target: config.services.recommendation,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/recommendations': '/recommendations' },
     on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Models  /v1/models/* → recommendation-service:/models ──────────────────
+// ─── Models  /v1/models/* → insights-service:/models ────────────────────────
 router.use(
   '/v1/models',
   createProxyMiddleware({
-    target: config.services.recommendation,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/models': '/models' },
     on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Features  /v1/features/* → feature-service:/features ───────────────────
+// ─── Features  /v1/features/* → insights-service:/features ──────────────────
 router.use(
   '/v1/features',
   createProxyMiddleware({
-    target: config.services.feature,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/features': '/features' },
     on: { proxyReq: makeProxyHandler() },
   })
 );
 
-// ─── Backtest  /v1/backtest/* → backtest-service:/backtest ──────────────────
+// ─── Backtest  /v1/backtest/* → insights-service:/backtest ──────────────────
 router.use(
   '/v1/backtest',
   createProxyMiddleware({
-    target: config.services.backtest,
+    target: config.services.insights,
     changeOrigin: true,
     pathRewrite: { '^/v1/backtest': '/backtest' },
     on: { proxyReq: makeProxyHandler() },

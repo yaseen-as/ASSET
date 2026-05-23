@@ -1,6 +1,12 @@
 # SwingTrade V2 — ML Recommendation Platform Implementation Plan
 
-> **Goal:** Evolve the existing rule-based `SignalGeneratorService` into a multi-model ML platform combining technical, fundamental, and sentiment signals through a meta-model ranking system — without breaking the current single-stack monorepo deployment.
+> ⚠️ **HISTORICAL — DO NOT USE AS CURRENT ARCHITECTURE.**
+>
+> This document is the original V2 expansion plan (3 services → 6). Phases 1–4 of it shipped (feature-service, recommendation-service, backtest-service were created as separate services). Then it became clear those splits were over-engineering for a single-tenant swing-trade platform.
+>
+> **The expansion was reversed.** See [reduction-plan.md](reduction-plan.md) for the consolidation back to **3 services** (api-gateway, core-service, insights-service) with a second `insights-worker` pod running the same image. All ML capability described below now lives under `services/insights-service/src/{features,recommendations,backtest}/`. No separate feature/recommendation/backtest services exist on disk anymore.
+>
+> Read this file only for historical context: schema design (§4), ML training pipeline (§6), ONNX inference (§7), backtest engine (§8), model lifecycle (§14). Anything that talks about *services* (§3 topology, §5 folder structure, §11 Docker/Helm, §16 weekly checklist) is wrong relative to current code. Cross-reference [CLAUDE.md](CLAUDE.md) and [instruction.md](instruction.md) for the current shape.
 
 ---
 

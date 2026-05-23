@@ -54,9 +54,6 @@ apiGateway:
     NODE_ENV: production
     CORE_SERVICE_URL: http://core-service
     INSIGHTS_SERVICE_URL: http://insights-service
-    RECOMMENDATION_SERVICE_URL: http://recommendation-service
-    FEATURE_SERVICE_URL: http://feature-service
-    BACKTEST_SERVICE_URL: http://backtest-service
     REDIS_URL: redis://redis-service:6379
     # Must match core-service JWT_SECRET
     JWT_SECRET: dev-jwt-secret-change-this-in-production-min-32chars
@@ -96,82 +93,6 @@ coreService:
   probes:
     enabled: true
 
-# ─── Feature Service ──────────────────────────────────────────────────────────
-featureService:
-  replicas: 1
-  image:
-    repository: yaseenas/feature-service
-    tag: latest
-  workingDir: /app/services/feature-service
-  port: 3006
-  config:
-    SERVICE_NAME: feature-service
-    PORT: "3006"
-    NODE_ENV: production
-    DB_HOST: postgres-service.database.svc.cluster.local
-    DB_PORT: "5432"
-    DB_NAME: insights_db
-    DB_USER: admin
-    DB_PASSWORD: admin123
-    REDIS_URL: redis://redis-service:6379
-    MATERIALIZATION_HOUR: "0"
-    MATERIALIZATION_CRON_ENABLED: "false"
-    FEATURE_CACHE_TTL_SECONDS: "86400"
-  resources: {}
-  probes:
-    enabled: true
-
-# ─── Recommendation Service ───────────────────────────────────────────────────
-recommendationService:
-  replicas: 1
-  image:
-    repository: yaseenas/recommendation-service
-    tag: latest
-  workingDir: /app/services/recommendation-service
-  port: 3005
-  config:
-    SERVICE_NAME: recommendation-service
-    PORT: "3005"
-    NODE_ENV: production
-    DB_HOST: postgres-service.database.svc.cluster.local
-    DB_PORT: "5432"
-    DB_NAME: insights_db
-    DB_USER: admin
-    DB_PASSWORD: admin123
-    REDIS_URL: redis://redis-service:6379
-    FEATURE_SERVICE_URL: http://feature-service
-    DEFAULT_MODEL_NAME: meta
-    MODEL_CACHE_SIZE: "5"
-    DAILY_RANKING_CRON_ENABLED: "false"
-    PERFORMANCE_BACKFILL_CRON_ENABLED: "false"
-  resources: {}
-  probes:
-    enabled: true
-
-# ─── Backtest Service ─────────────────────────────────────────────────────────
-backtestService:
-  replicas: 1
-  image:
-    repository: yaseenas/backtest-service
-    tag: latest
-  workingDir: /app/services/backtest-service
-  port: 3007
-  config:
-    SERVICE_NAME: backtest-service
-    PORT: "3007"
-    NODE_ENV: production
-    DB_HOST: postgres-service.database.svc.cluster.local
-    DB_PORT: "5432"
-    DB_NAME: insights_db
-    DB_USER: admin
-    DB_PASSWORD: admin123
-    REDIS_URL: redis://redis-service:6379
-    BACKTEST_QUEUE_NAME: backtest-runs
-    BACKTEST_CONCURRENCY: "2"
-  resources: {}
-  probes:
-    enabled: true
-
 # ─── Insights Service ─────────────────────────────────────────────────────────
 insightsService:
   replicas: 2
@@ -191,10 +112,32 @@ insightsService:
     DB_PASSWORD: admin123
     REDIS_URL: redis://redis-service:6379
     CORE_SERVICE_URL: http://core-service
-    SIGNAL_CACHE_HOURS: "4"
+    # Feature store materialization (folded in from feature-service)
+    MATERIALIZATION_HOUR: "0"
+    MATERIALIZATION_CRON_ENABLED: "false"
+    FEATURE_CACHE_TTL_SECONDS: "86400"
+    # ML inference + ranking (folded in from recommendation-service)
+    DEFAULT_MODEL_NAME: meta
+    MODEL_CACHE_SIZE: "5"
+    DAILY_RANKING_CRON_ENABLED: "false"
+    PERFORMANCE_BACKFILL_CRON_ENABLED: "false"
+    # Backtest (folded in from backtest-service). The HTTP pod only enqueues
+    # jobs; the worker pod runs the BullMQ consumer.
+    BACKTEST_QUEUE_NAME: backtest-runs
+    BACKTEST_CONCURRENCY: "1"
   resources: {}
   probes:
     enabled: true
+
+# ─── Insights Worker (same image, runs crons; no HTTP) ───────────────────────
+# Owns: feature materialization, daily ML ranking, performance backfill.
+# Reads the same insights-service-config configmap. Crons fire only when
+# their *_CRON_ENABLED flag is "true" — leave them off in the API pod's
+# environment, on here.
+insightsWorker:
+  enabled: true
+  replicas: 1
+  resources: {}
 
 # ─── Frontend ─────────────────────────────────────────────────────────────────
 frontend:

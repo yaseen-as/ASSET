@@ -25,7 +25,13 @@
 │   │                          (auth+OTP+JWT, profiles, Upstox OAuth, orders, holdings, watchlists,
 │   │                           paper trading, alerts, in-app notifications)
 │   └── insights-service/    → Port 3004, schemas: market, recommendations
-│                              (quotes, OHLCV, indicators, on-request signal generation)
+│                              (quotes/OHLCV/indicators + feature store + ML inference
+│                               + ranking + backtest simulator + model registry).
+│                              Ships two pods from one image:
+│                                - HTTP pod (server.ts) handles requests.
+│                                - Worker pod (worker.ts) runs feature
+│                                  materialization, daily ranking, perf backfill,
+│                                  and the backtest BullMQ consumer.
 ├── frontend/                → React SPA at port 5173 (Vite dev)
 ├── k8s/
 │   ├── base/                → Shared K8s manifests (deployments, services, configmaps, secrets)
@@ -41,7 +47,8 @@
 # Run individual services locally
 npm run gateway          # api-gateway
 npm run core             # core-service (auth + users + broker + portfolio + engagement)
-npm run insights         # insights-service (market + recommendations)
+npm run insights         # insights-service HTTP pod (market + features + recommendations + backtest API + model registry)
+npm run insights-worker  # insights-service worker pod (feature materialization, daily ranking, perf backfill, backtest BullMQ consumer)
 npm run web              # frontend (Vite)
 
 # Monorepo-wide
@@ -77,7 +84,8 @@ kubectl apply -k k8s/overlays/dev
 | From | To | Method | URL Pattern |
 |------|----|--------|-------------|
 | API Gateway | core-service / insights-service | HTTP Proxy | Strips `/v1/<area>` prefix |
-| insights-service (recommendations) | insights-service (market) | Direct call | In-process — no HTTP |
+| insights-service (recommendations / backtest) | insights-service (market / features) | Direct call | In-process — no HTTP |
+| insights-service (HTTP pod) | insights-service (worker pod) | Redis (BullMQ) | Backtest jobs only; consumer lives in worker pod |
 | insights-service (market) | core-service (broker) | HTTP | `http://core-service/market/quote/:exchange/:symbol` (Upstox bridge) |
 | core-service (portfolio) | core-service (broker) | Direct call | In-process — no HTTP |
 | core-service (portfolio/paper) | insights-service | HTTP | `http://insights-service/quote/:exchange/:symbol` |
@@ -96,7 +104,10 @@ kubectl apply -k k8s/overlays/dev
 | `/v1/alerts/*` | core-service | rewrite to `/alerts/*` |
 | `/v1/notifications/*` | core-service | rewrite to `/notifications/*` |
 | `/v1/market/*` | insights-service | strip `/v1/market` |
+| `/v1/features/*` | insights-service | rewrite to `/features/*` |
 | `/v1/recommendations/*` | insights-service | rewrite to `/recommendations/*` |
+| `/v1/models/*` | insights-service | rewrite to `/models/*` |
+| `/v1/backtest/*` | insights-service | rewrite to `/backtest/*` |
 
 ## Shared Package (@platform/shared)
 
@@ -138,6 +149,10 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 - `DB_HOST/PORT/NAME/USER/PASSWORD` — PostgreSQL connection
 - `CORE_SERVICE_URL` — Used by api-gateway and insights-service to reach core-service
 - `INSIGHTS_SERVICE_URL` — Used by api-gateway and core-service to reach insights-service
+- `MATERIALIZATION_HOUR`, `MATERIALIZATION_CRON_ENABLED` — Feature store materialization (insights-worker pod only)
+- `DEFAULT_MODEL_NAME`, `MODEL_CACHE_SIZE` — ONNX inference (LRU cache size for loaded models)
+- `DAILY_RANKING_CRON_ENABLED`, `PERFORMANCE_BACKFILL_CRON_ENABLED` — ML cron toggles (worker pod only)
+- `BACKTEST_QUEUE_NAME`, `BACKTEST_CONCURRENCY` — BullMQ queue name + worker concurrency
 
 ## Upstox API Integration
 
@@ -175,8 +190,11 @@ Do not consider a backend task complete until the frontend reflects the change.
 - The `GET /v1/broker/callback/upstox` route is an OAuth redirect target — it receives `code` + `state` from Upstox, not from the frontend.
 - `JWT_SECRET` must match between api-gateway and core-service (gateway verifies, core-service signs). Update both `k8s/base/services/api-gateway/configmap.yaml` and `k8s/base/services/core-service/secret.yaml` together.
 - core-service domain layout: `src/auth/` (register/login/OTP/JWT), `src/users/` (profile), `src/broker/` (Upstox/orders/paper trading), `src/portfolio/` (holdings/watchlists), `src/engagement/` (alerts/notifications). All share one `db` Knex instance against `core_db`.
-- insights-service domain layout: `src/market/` (quotes/OHLCV/indicators), `src/recommendations/` (rule-engine signals). `SignalGeneratorService` receives `MarketDataService` via constructor — no HTTP for historical data.
-- Signals are generated **on-request** by `RecommendationController` if no signal exists newer than `SIGNAL_CACHE_HOURS` (default 4h). No background scheduler.
+- insights-service domain layout: `src/market/` (quotes/OHLCV/indicators), `src/features/` (feature store + materialization), `src/recommendations/` (model registry, ONNX inference, scoring, ranking, model-promotion API, crons), `src/backtest/` (walk-forward simulator + BullMQ queue + worker). All share one `db` Knex instance against `insights_db`.
+- **Two entrypoints, one image**: `src/server.ts` boots Express for HTTP traffic; `src/worker.ts` boots no HTTP, only the background jobs (feature materialization, daily ranking, performance backfill, backtest BullMQ consumer). Same image, different `command:`; deployed as separate `insights-service` and `insights-worker` Deployments.
+- ML inference: `RegistryRepository` reads `recommendations.model_registry`; ONNX bytes are stored in `recommendations.model_artifacts` (BYTEA) and loaded by `OnnxLoaderService` with an LRU cache sized by `MODEL_CACHE_SIZE`. Promotion via `POST /v1/models/:id/promote` evicts the cache entry in-process.
+- Feature → inference flow is **in-process**: `ScorerService` takes a `FeatureStoreRepository` (not an HTTP client). The pre-consolidation HTTP hop from `recommendation-service → feature-service` is gone.
+- Backtest is BullMQ-shaped: HTTP `POST /v1/backtest/runs` inserts a row in `recommendations.backtest_results` and enqueues a job; the worker pod consumes it, runs `WalkForwardEngine`, and updates the same row. Frontend polls `GET /v1/backtest/runs/:id`.
 - Frontend uses `usePolling` hook (visibility-gated): quotes 5s, notifications 30s, orders 30s (only when pending). No WebSocket clients.
 - When deleting a service file, grep the entire service for imports of that file (`grep -r 'deleted-file-name'`) before removing it — missed imports won't surface until runtime (`Cannot find module`).
 - The frontend at `localhost:5173` proxies API calls to `localhost:3000` (gateway). In K8s, ingress handles this.
