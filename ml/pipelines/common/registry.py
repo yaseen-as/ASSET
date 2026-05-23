@@ -1,7 +1,8 @@
 """Uploads a trained ONNX model + metadata into recommendations.model_registry.
 
 Writes the model row as `status='draft'`. Promotion to canary/production
-is a separate admin step (handled via the recommendation-service API).
+is a separate admin step (POST /v1/models/:id/promote on insights-service,
+served from src/recommendations/api/models.controller.ts).
 """
 
 from __future__ import annotations

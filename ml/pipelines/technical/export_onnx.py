@@ -2,7 +2,7 @@
 
 The verification step asserts that ONNX predictions match LightGBM predictions
 to within 1e-5 on a small sample — catches conversion regressions before the
-model ever reaches recommendation-service.
+model ever reaches the inference path in insights-service.
 """
 
 from __future__ import annotations
