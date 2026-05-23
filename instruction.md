@@ -217,8 +217,9 @@ curl -X POST http://localhost:3000/v1/features/materialize \
   -H 'Content-Type: application/json' \
   -d '{"date":"2026-05-13"}'
 
-# Or enable the cron in the deployment
-# helm values: featureService.config.MATERIALIZATION_CRON_ENABLED: "true"
+# Or enable the cron in the worker pod
+# helm values: insightsService.config.MATERIALIZATION_CRON_ENABLED: "true"
+# (The HTTP pod reads the same value but never runs the cron — only worker.ts does.)
 ```
 
 ### 6.2 Daily ranking
@@ -228,8 +229,8 @@ curl -X POST http://localhost:3000/v1/recommendations/rank \
   -H 'Content-Type: application/json' \
   -d '{"exchange":"NSE","date":"2026-05-13","top_n":50}'
 
-# Or enable the cron
-# helm values: recommendationService.config.DAILY_RANKING_CRON_ENABLED: "true"
+# Or enable the cron in the worker pod
+# helm values: insightsService.config.DAILY_RANKING_CRON_ENABLED: "true"
 ```
 
 ### 6.3 Read top recommendations
@@ -465,6 +466,10 @@ All ML endpoints are served by `insights-service` (HTTP pod). External callers g
 
 ## 16. Architecture Decisions That Live Here, Not in Code
 
+- **3 services, 4 pods.** api-gateway, core-service, insights-service. insights-service also runs as a second pod (`insights-worker`) from the same image — different `command`, no HTTP, owns crons + BullMQ consumer.
+- **One image, two entrypoints.** `src/server.ts` boots Express; `src/worker.ts` boots only background jobs. Picking which to run is a deployment concern (`command: ["node", "dist/worker.js"]`), not a build concern.
+- **Cron flags are read by both pods, acted on only by the worker.** `DAILY_RANKING_CRON_ENABLED`, `MATERIALIZATION_CRON_ENABLED`, `PERFORMANCE_BACKFILL_CRON_ENABLED` live on `insightsService.config` (one configmap). The HTTP pod reads them too but `server.ts` never calls `cron.start()`. This means you can flip a flag without redeploying the HTTP pod, and the API never accidentally runs a batch job.
+- **`src/shared/` is the single source of truth for cross-module ML primitives.** `ModelMeta`, `ModelName`, `ModelStatus`, and `ModelRegistryRepository` live there. Both `recommendations/` (inference, scoring, models API) and `backtest/` (walk-forward engine, controller "model exists?" check) inject the same registry instance — `recommendation-service → feature-service` style HTTP no longer exists, and there is no duplicate model-registry query in the codebase.
 - **ONNX storage**: in-DB as BYTEA (`recommendations.model_artifacts`) until any single model exceeds ~100 MB. Then move to S3/MinIO and update `artifact_uri` scheme handling in `onnx-loader.service.ts`.
 - **Label horizon**: hard-coded to 5 trading days, 3% threshold. Configurable via env (`LABEL_HORIZON_DAYS`, `LABEL_THRESHOLD`) in the training pipeline. Changing the horizon invalidates all existing models.
 - **Universe**: training currently uses every symbol in `market.ohlcv_daily`. Restrict by adding a filter in `pipelines/technical/extract.py` if dataset bloats.
