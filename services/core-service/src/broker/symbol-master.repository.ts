@@ -14,7 +14,7 @@ export interface SymbolRow {
 }
 
 export class SymbolMasterRepository {
-  private table = 'broker.symbol_master';
+  private table = 'core.symbol_master';
 
   async upsertBatch(rows: Partial<SymbolRow>[]): Promise<number> {
     if (rows.length === 0) return 0;

@@ -2,7 +2,7 @@ import { db } from '../config/database';
 import type { OHLCV, Exchange } from '@platform/shared';
 
 export class MarketDataRepository {
-  private table = 'market.ohlcv_daily';
+  private table = 'insights.ohlcv_daily';
 
   async getHistorical(symbol: string, exchange: Exchange, from: string, to: string): Promise<OHLCV[]> {
     const rows = await db(this.table)

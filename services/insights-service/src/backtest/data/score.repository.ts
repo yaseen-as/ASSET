@@ -37,10 +37,10 @@ export class ScoreRepository {
   }
 
   private tableFor(name: string): { table: string; scoreCol: string } {
-    if (name === 'meta') return { table: 'recommendations.final_scores', scoreCol: 'final_score' };
-    if (name === 'technical') return { table: 'recommendations.technical_scores', scoreCol: 'score' };
-    if (name === 'fundamental') return { table: 'recommendations.fundamental_scores', scoreCol: 'score' };
-    if (name === 'sentiment') return { table: 'recommendations.sentiment_scores', scoreCol: 'score' };
+    if (name === 'meta') return { table: 'insights.final_scores', scoreCol: 'final_score' };
+    if (name === 'technical') return { table: 'insights.technical_scores', scoreCol: 'score' };
+    if (name === 'fundamental') return { table: 'insights.fundamental_scores', scoreCol: 'score' };
+    if (name === 'sentiment') return { table: 'insights.sentiment_scores', scoreCol: 'score' };
     throw new Error(`Unsupported model name for scoring: ${name}`);
   }
 }

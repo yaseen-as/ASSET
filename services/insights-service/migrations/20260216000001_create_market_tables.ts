@@ -1,9 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS market');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS insights');
 
-  await knex.schema.withSchema('market').createTable('ohlcv_daily', (table) => {
+  await knex.schema.withSchema('insights').createTable('ohlcv_daily', (table) => {
     table.string('symbol', 20).notNullable();
     table.string('exchange', 10).notNullable();
     table.date('date').notNullable();
@@ -19,5 +19,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('market').dropTableIfExists('ohlcv_daily');
+  await knex.schema.withSchema('insights').dropTableIfExists('ohlcv_daily');
 }

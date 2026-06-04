@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('broker').createTable('symbol_master', (table) => {
+  await knex.schema.withSchema('core').createTable('symbol_master', (table) => {
     table.string('token', 20).notNullable();
     table.string('exchange', 10).notNullable();
     table.string('symbol', 50).notNullable();
@@ -20,5 +20,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('broker').dropTableIfExists('symbol_master');
+  await knex.schema.withSchema('core').dropTableIfExists('symbol_master');
 }

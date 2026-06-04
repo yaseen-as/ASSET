@@ -1,9 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS auth');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS core');
 
-  await knex.schema.withSchema('auth').createTable('users', (table) => {
+  await knex.schema.withSchema('core').createTable('users', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('email', 255).notNullable().unique();
     table.string('password_hash', 255).notNullable();
@@ -14,7 +14,7 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now());
   });
 
-  await knex.schema.withSchema('auth').createTable('otp_codes', (table) => {
+  await knex.schema.withSchema('core').createTable('otp_codes', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('phone', 15).notNullable();
     table.string('code', 6).notNullable();
@@ -28,6 +28,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('auth').dropTableIfExists('otp_codes');
-  await knex.schema.withSchema('auth').dropTableIfExists('users');
+  await knex.schema.withSchema('core').dropTableIfExists('otp_codes');
+  await knex.schema.withSchema('core').dropTableIfExists('users');
 }

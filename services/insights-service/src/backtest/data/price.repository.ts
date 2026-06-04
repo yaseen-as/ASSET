@@ -15,7 +15,7 @@ export class PriceRepository {
   private byKey: Map<string, Bar> = new Map();
 
   async load(exchange: string, start: string, end: string, symbols?: string[]): Promise<void> {
-    const q = db('market.ohlcv_daily')
+    const q = db('insights.ohlcv_daily')
       .select('symbol', 'date', 'close', 'high', 'low')
       .where('exchange', exchange)
       .whereBetween('date', [start, end]);

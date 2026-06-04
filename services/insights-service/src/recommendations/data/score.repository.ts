@@ -39,7 +39,7 @@ export class ScoreRepository {
   }
 
   async upsertFinalScore(input: FinalScoreInput): Promise<void> {
-    await db('recommendations.final_scores')
+    await db('insights.final_scores')
       .insert(input)
       .onConflict(['symbol', 'exchange', 'as_of_date', 'meta_model_id'])
       .merge(['technical_score', 'fundamental_score', 'sentiment_score', 'final_score']);
@@ -50,10 +50,10 @@ export class ScoreRepository {
       `
       WITH ranked AS (
         SELECT id, ROW_NUMBER() OVER (ORDER BY final_score DESC) AS r
-        FROM recommendations.final_scores
+        FROM insights.final_scores
         WHERE as_of_date = ? AND meta_model_id = ?
       )
-      UPDATE recommendations.final_scores f
+      UPDATE insights.final_scores f
       SET rank = ranked.r
       FROM ranked
       WHERE f.id = ranked.id
@@ -63,7 +63,7 @@ export class ScoreRepository {
   }
 
   async topRanked(date: string, metaModelId: string, limit: number) {
-    return db('recommendations.final_scores')
+    return db('insights.final_scores')
       .where({ as_of_date: date, meta_model_id: metaModelId })
       .orderBy('rank', 'asc')
       .limit(limit);

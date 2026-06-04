@@ -2,9 +2,9 @@ import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
   // engagement schema is already created by the alerts migration; idempotent here too
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS engagement');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS core');
 
-  await knex.schema.withSchema('engagement').createTable('notifications', (t) => {
+  await knex.schema.withSchema('core').createTable('notifications', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('user_id').notNullable().index();
 
@@ -23,11 +23,11 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.raw(`
     CREATE INDEX idx_notifications_user_unread
-    ON engagement.notifications (user_id, created_at DESC)
+    ON core.notifications (user_id, created_at DESC)
     WHERE is_read = false
   `);
 
-  await knex.schema.withSchema('engagement').createTable('preferences', (t) => {
+  await knex.schema.withSchema('core').createTable('preferences', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('user_id').notNullable().unique();
 
@@ -42,6 +42,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('engagement').dropTableIfExists('preferences');
-  await knex.schema.withSchema('engagement').dropTableIfExists('notifications');
+  await knex.schema.withSchema('core').dropTableIfExists('preferences');
+  await knex.schema.withSchema('core').dropTableIfExists('notifications');
 }

@@ -31,7 +31,7 @@ export const db: Knex = knex({
     user: config.db.user,
     password: config.db.password,
   },
-  searchPath: ['auth', 'users', 'broker', 'portfolio', 'engagement', 'public'],
+  searchPath: ['core', 'public'],
   pool: { min: 2, max: 10 },
   migrations: {
     directory: './migrations',
@@ -43,10 +43,5 @@ export const db: Knex = knex({
 export async function initDatabase(): Promise<void> {
   await ensureDatabase(config.db.database);
   await db.raw('CREATE SCHEMA IF NOT EXISTS core');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS auth');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS users');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS broker');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS portfolio');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS engagement');
   await db.migrate.latest();
 }

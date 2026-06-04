@@ -6,8 +6,8 @@ import type { Knex } from 'knex';
 // covers that future transition).
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('recommendations').createTable('model_artifacts', (t) => {
-    t.uuid('model_id').primary().references('id').inTable('recommendations.model_registry').onDelete('CASCADE');
+  await knex.schema.withSchema('insights').createTable('model_artifacts', (t) => {
+    t.uuid('model_id').primary().references('id').inTable('insights.model_registry').onDelete('CASCADE');
     t.binary('bytes').notNullable();
     t.integer('size_bytes').notNullable();
     t.text('sha256').notNullable();
@@ -16,5 +16,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('recommendations').dropTableIfExists('model_artifacts');
+  await knex.schema.withSchema('insights').dropTableIfExists('model_artifacts');
 }

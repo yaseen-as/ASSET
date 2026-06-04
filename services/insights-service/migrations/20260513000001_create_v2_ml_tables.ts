@@ -1,18 +1,18 @@
 import type { Knex } from 'knex';
 
-// V2 ML platform tables — added alongside the V1 `recommendations.signals`
+// V2 ML platform tables — added alongside the V1 `insights.signals`
 // table from 20260216000002. Both coexist; V1 stays online behind the
 // RECOMMENDATION_ENGINE feature flag.
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS recommendations');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS insights');
 
   // ─── feature_store ──────────────────────────────────────────────────────
   // Partitioned by month on as_of_date. Knex doesn't support PARTITION BY,
   // so raw SQL is used. A bootstrap partition for the current month is
   // created here; future partitions are managed by a Node cron job.
   await knex.raw(`
-    CREATE TABLE recommendations.feature_store (
+    CREATE TABLE insights.feature_store (
       symbol       TEXT        NOT NULL,
       exchange     TEXT        NOT NULL,
       as_of_date   DATE        NOT NULL,
@@ -24,16 +24,16 @@ export async function up(knex: Knex): Promise<void> {
   `);
   await knex.raw(`
     CREATE INDEX idx_feature_store_lookup
-      ON recommendations.feature_store (symbol, exchange, as_of_date DESC, feature_set)
+      ON insights.feature_store (symbol, exchange, as_of_date DESC, feature_set)
   `);
   // Default partition catches anything outside explicit ranges.
   await knex.raw(`
-    CREATE TABLE recommendations.feature_store_default
-      PARTITION OF recommendations.feature_store DEFAULT
+    CREATE TABLE insights.feature_store_default
+      PARTITION OF insights.feature_store DEFAULT
   `);
 
   // ─── model_registry ─────────────────────────────────────────────────────
-  await knex.schema.withSchema('recommendations').createTable('model_registry', (t) => {
+  await knex.schema.withSchema('insights').createTable('model_registry', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.text('name').notNullable();                   // 'technical' | 'fundamental' | 'sentiment' | 'meta'
     t.text('version').notNullable();                // semver-ish
@@ -51,18 +51,18 @@ export async function up(knex: Knex): Promise<void> {
   });
   await knex.raw(`
     CREATE INDEX idx_model_registry_active
-      ON recommendations.model_registry (name, status, rollout_percent)
+      ON insights.model_registry (name, status, rollout_percent)
       WHERE status IN ('canary', 'production')
   `);
 
   // ─── score tables (technical / fundamental / sentiment) ─────────────────
   for (const kind of ['technical', 'fundamental', 'sentiment'] as const) {
-    await knex.schema.withSchema('recommendations').createTable(`${kind}_scores`, (t) => {
+    await knex.schema.withSchema('insights').createTable(`${kind}_scores`, (t) => {
       t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
       t.text('symbol').notNullable();
       t.text('exchange').notNullable();
       t.date('as_of_date').notNullable();
-      t.uuid('model_id').notNullable().references('id').inTable('recommendations.model_registry');
+      t.uuid('model_id').notNullable().references('id').inTable('insights.model_registry');
       t.decimal('score', 6, 4).notNullable();
       t.jsonb('features_ref').notNullable();
       t.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
@@ -72,12 +72,12 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // ─── final_scores (meta-model output) ───────────────────────────────────
-  await knex.schema.withSchema('recommendations').createTable('final_scores', (t) => {
+  await knex.schema.withSchema('insights').createTable('final_scores', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.text('symbol').notNullable();
     t.text('exchange').notNullable();
     t.date('as_of_date').notNullable();
-    t.uuid('meta_model_id').notNullable().references('id').inTable('recommendations.model_registry');
+    t.uuid('meta_model_id').notNullable().references('id').inTable('insights.model_registry');
     t.decimal('technical_score', 6, 4);
     t.decimal('fundamental_score', 6, 4);
     t.decimal('sentiment_score', 6, 4);
@@ -89,9 +89,9 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // ─── backtest_results ───────────────────────────────────────────────────
-  await knex.schema.withSchema('recommendations').createTable('backtest_results', (t) => {
+  await knex.schema.withSchema('insights').createTable('backtest_results', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('model_id').notNullable().references('id').inTable('recommendations.model_registry');
+    t.uuid('model_id').notNullable().references('id').inTable('insights.model_registry');
     t.date('start_date').notNullable();
     t.date('end_date').notNullable();
     t.jsonb('params').notNullable();
@@ -107,9 +107,9 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   // ─── performance_logs (live model tracking) ─────────────────────────────
-  await knex.schema.withSchema('recommendations').createTable('performance_logs', (t) => {
+  await knex.schema.withSchema('insights').createTable('performance_logs', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    t.uuid('model_id').notNullable().references('id').inTable('recommendations.model_registry');
+    t.uuid('model_id').notNullable().references('id').inTable('insights.model_registry');
     t.text('symbol').notNullable();
     t.date('as_of_date').notNullable();
     t.decimal('predicted', 6, 4).notNullable();
@@ -122,12 +122,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('recommendations').dropTableIfExists('performance_logs');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('backtest_results');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('final_scores');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('sentiment_scores');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('fundamental_scores');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('technical_scores');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('model_registry');
-  await knex.raw('DROP TABLE IF EXISTS recommendations.feature_store CASCADE');
+  await knex.schema.withSchema('insights').dropTableIfExists('performance_logs');
+  await knex.schema.withSchema('insights').dropTableIfExists('backtest_results');
+  await knex.schema.withSchema('insights').dropTableIfExists('final_scores');
+  await knex.schema.withSchema('insights').dropTableIfExists('sentiment_scores');
+  await knex.schema.withSchema('insights').dropTableIfExists('fundamental_scores');
+  await knex.schema.withSchema('insights').dropTableIfExists('technical_scores');
+  await knex.schema.withSchema('insights').dropTableIfExists('model_registry');
+  await knex.raw('DROP TABLE IF EXISTS insights.feature_store CASCADE');
 }

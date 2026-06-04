@@ -1,9 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS recommendations');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS insights');
 
-  await knex.schema.withSchema('recommendations').createTable('signals', (table) => {
+  await knex.schema.withSchema('insights').createTable('signals', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('symbol', 20).notNullable();
     table.string('exchange', 10).notNullable();
@@ -19,10 +19,10 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['source']);
   });
 
-  await knex.schema.withSchema('recommendations').createTable('user_recommendations', (table) => {
+  await knex.schema.withSchema('insights').createTable('user_recommendations', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('user_id').notNullable();
-    table.uuid('signal_id').notNullable().references('id').inTable('recommendations.signals').onDelete('CASCADE');
+    table.uuid('signal_id').notNullable().references('id').inTable('insights.signals').onDelete('CASCADE');
     table.smallint('personalization_score').defaultTo(50);
     table.boolean('is_viewed').defaultTo(false);
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
@@ -32,6 +32,6 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('recommendations').dropTableIfExists('user_recommendations');
-  await knex.schema.withSchema('recommendations').dropTableIfExists('signals');
+  await knex.schema.withSchema('insights').dropTableIfExists('user_recommendations');
+  await knex.schema.withSchema('insights').dropTableIfExists('signals');
 }

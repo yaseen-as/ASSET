@@ -17,7 +17,7 @@ export interface ConnectionRow {
 }
 
 export class BrokerConnectionRepository {
-  private table = 'broker.connections';
+  private table = 'core.connections';
 
   async create(data: Partial<ConnectionRow>): Promise<ConnectionRow> {
     const [row] = await db(this.table).insert(data).returning('*');

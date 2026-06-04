@@ -1,9 +1,9 @@
 import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS engagement');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS core');
 
-  await knex.schema.withSchema('engagement').createTable('alerts', (t) => {
+  await knex.schema.withSchema('core').createTable('alerts', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('user_id').notNullable().index();
     t.string('symbol', 20).notNullable();
@@ -34,11 +34,11 @@ export async function up(knex: Knex): Promise<void> {
 
   await knex.raw(`
     CREATE INDEX idx_alerts_active_symbol
-    ON engagement.alerts (symbol, exchange)
+    ON core.alerts (symbol, exchange)
     WHERE status = 'active'
   `);
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('engagement').dropTableIfExists('alerts');
+  await knex.schema.withSchema('core').dropTableIfExists('alerts');
 }

@@ -32,19 +32,19 @@ def fetch_component_scores(start: date, end: date, exchange: str = "NSE") -> pd.
     query = """
         WITH t AS (
           SELECT symbol, exchange, as_of_date, AVG(score) AS technical_score
-          FROM recommendations.technical_scores
+          FROM insights.technical_scores
           WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
           GROUP BY symbol, exchange, as_of_date
         ),
         f AS (
           SELECT symbol, exchange, as_of_date, AVG(score) AS fundamental_score
-          FROM recommendations.fundamental_scores
+          FROM insights.fundamental_scores
           WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
           GROUP BY symbol, exchange, as_of_date
         ),
         sen AS (
           SELECT symbol, exchange, as_of_date, AVG(score) AS sentiment_score
-          FROM recommendations.sentiment_scores
+          FROM insights.sentiment_scores
           WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
           GROUP BY symbol, exchange, as_of_date
         )

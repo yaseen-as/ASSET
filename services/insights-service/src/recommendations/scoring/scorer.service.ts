@@ -101,11 +101,11 @@ export class ScorerService {
     const { db } = await import('../../config/database');
     const rows = await db.raw(
       `
-      WITH t AS (SELECT symbol, exchange, AVG(score) AS s FROM recommendations.technical_scores
+      WITH t AS (SELECT symbol, exchange, AVG(score) AS s FROM insights.technical_scores
                  WHERE as_of_date = ? AND exchange = ? GROUP BY symbol, exchange),
-           f AS (SELECT symbol, exchange, AVG(score) AS s FROM recommendations.fundamental_scores
+           f AS (SELECT symbol, exchange, AVG(score) AS s FROM insights.fundamental_scores
                  WHERE as_of_date = ? AND exchange = ? GROUP BY symbol, exchange),
-           sen AS (SELECT symbol, exchange, AVG(score) AS s FROM recommendations.sentiment_scores
+           sen AS (SELECT symbol, exchange, AVG(score) AS s FROM insights.sentiment_scores
                    WHERE as_of_date = ? AND exchange = ? GROUP BY symbol, exchange)
       SELECT
         COALESCE(t.symbol, f.symbol, sen.symbol) AS symbol,

@@ -1,9 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS users');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS core');
 
-  await knex.schema.withSchema('users').createTable('profiles', (table) => {
+  await knex.schema.withSchema('core').createTable('profiles', (table) => {
     table.uuid('user_id').primary();
     table.string('display_name', 100);
     table.text('avatar_url');
@@ -15,5 +15,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('users').dropTableIfExists('profiles');
+  await knex.schema.withSchema('core').dropTableIfExists('profiles');
 }

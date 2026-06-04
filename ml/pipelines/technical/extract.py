@@ -1,4 +1,4 @@
-"""Pulls raw OHLCV bars from market.ohlcv_daily for the training universe."""
+"""Pulls raw OHLCV bars from insights.ohlcv_daily for the training universe."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def fetch_ohlcv(start: date, end: date, exchange: str = "NSE") -> pd.DataFrame:
     """Return long-format OHLCV: one row per (symbol, date)."""
     query = """
         SELECT symbol, exchange, date, open, high, low, close, volume
-        FROM market.ohlcv_daily
+        FROM insights.ohlcv_daily
         WHERE exchange = %(exchange)s
           AND date BETWEEN %(start)s AND %(end)s
         ORDER BY symbol, date

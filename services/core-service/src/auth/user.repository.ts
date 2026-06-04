@@ -22,7 +22,7 @@ interface OtpRow {
 }
 
 export class UserRepository {
-  private table = 'auth.users';
+  private table = 'core.users';
 
   async create(email: string, passwordHash: string, phone: string): Promise<UserRow> {
     const [user] = await db(this.table)
@@ -49,7 +49,7 @@ export class UserRepository {
 }
 
 export class OtpRepository {
-  private table = 'auth.otp_codes';
+  private table = 'core.otp_codes';
 
   async create(phone: string, code: string, expiresAt: Date): Promise<OtpRow> {
     const [otp] = await db(this.table)

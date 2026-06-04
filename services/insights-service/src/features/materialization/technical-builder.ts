@@ -52,7 +52,7 @@ export async function buildTechnicalFor(exchange: string, asOfDate: string, look
   start.setDate(start.getDate() - lookbackDays);
   const startIso = start.toISOString().slice(0, 10);
 
-  const rows = (await db('market.ohlcv_daily')
+  const rows = (await db('insights.ohlcv_daily')
     .select('symbol', 'date', 'close', 'high', 'low', 'volume')
     .where('exchange', exchange)
     .whereBetween('date', [startIso, asOfDate])

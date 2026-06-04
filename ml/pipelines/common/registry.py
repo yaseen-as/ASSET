@@ -1,4 +1,4 @@
-"""Uploads a trained ONNX model + metadata into recommendations.model_registry.
+"""Uploads a trained ONNX model + metadata into insights.model_registry.
 
 Writes the model row as `status='draft'`. Promotion to canary/production
 is a separate admin step (POST /v1/models/:id/promote on insights-service,
@@ -41,7 +41,7 @@ def upload(
             c.execute(
                 text(
                     """
-                    INSERT INTO recommendations.model_registry
+                    INSERT INTO insights.model_registry
                       (id, name, version, framework, artifact_uri, feature_set,
                        training_data, metrics, status, rollout_percent, created_by)
                     VALUES
@@ -64,7 +64,7 @@ def upload(
             c.execute(
                 text(
                     """
-                    INSERT INTO recommendations.model_artifacts
+                    INSERT INTO insights.model_artifacts
                       (model_id, bytes, size_bytes, sha256)
                     VALUES
                       (:model_id, :bytes, :size_bytes, :sha256)

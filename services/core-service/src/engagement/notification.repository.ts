@@ -25,8 +25,8 @@ export interface PreferencesRow {
 }
 
 export class NotificationRepository {
-  private table = 'engagement.notifications';
-  private prefsTable = 'engagement.preferences';
+  private table = 'core.notifications';
+  private prefsTable = 'core.preferences';
 
   async create(data: Partial<NotificationRow>): Promise<NotificationRow> {
     const [row] = await db(this.table).insert(data).returning('*');

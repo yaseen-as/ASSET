@@ -1,4 +1,4 @@
-"""Pull point-in-time fundamentals from `market.fundamentals_daily`.
+"""Pull point-in-time fundamentals from `insights.fundamentals_daily`.
 
 This table is populated by the optional fundamentals-service. If it does
 not yet exist, this script falls back to the closest reporting-quarter
@@ -38,7 +38,7 @@ def fetch_fundamentals(start: date, end: date, exchange: str = "NSE") -> pd.Data
           symbol, exchange, as_of_date,
           pe_ratio, eps, eps_growth_yoy, roe,
           debt_to_equity, revenue_growth_yoy, sector
-        FROM market.fundamentals_daily
+        FROM insights.fundamentals_daily
         WHERE exchange = %(exchange)s
           AND as_of_date BETWEEN %(start)s AND %(end)s
         ORDER BY symbol, as_of_date

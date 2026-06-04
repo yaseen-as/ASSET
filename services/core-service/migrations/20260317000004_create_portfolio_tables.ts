@@ -1,9 +1,9 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.raw('CREATE SCHEMA IF NOT EXISTS portfolio');
+  await knex.raw('CREATE SCHEMA IF NOT EXISTS core');
 
-  await knex.schema.withSchema('portfolio').createTable('portfolios', (table) => {
+  await knex.schema.withSchema('core').createTable('portfolios', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('user_id').notNullable();
     table.string('name', 100).defaultTo('Default');
@@ -12,9 +12,9 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['user_id']);
   });
 
-  await knex.schema.withSchema('portfolio').createTable('holdings', (table) => {
+  await knex.schema.withSchema('core').createTable('holdings', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    table.uuid('portfolio_id').notNullable().references('id').inTable('portfolio.portfolios').onDelete('CASCADE');
+    table.uuid('portfolio_id').notNullable().references('id').inTable('core.portfolios').onDelete('CASCADE');
     table.uuid('user_id').notNullable();
     table.string('symbol', 20).notNullable();
     table.string('exchange', 10).notNullable();
@@ -28,7 +28,7 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['user_id', 'symbol', 'exchange']);
   });
 
-  await knex.schema.withSchema('portfolio').createTable('watchlists', (table) => {
+  await knex.schema.withSchema('core').createTable('watchlists', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('user_id').notNullable();
     table.string('name', 100).defaultTo('My Watchlist');
@@ -41,7 +41,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('portfolio').dropTableIfExists('watchlists');
-  await knex.schema.withSchema('portfolio').dropTableIfExists('holdings');
-  await knex.schema.withSchema('portfolio').dropTableIfExists('portfolios');
+  await knex.schema.withSchema('core').dropTableIfExists('watchlists');
+  await knex.schema.withSchema('core').dropTableIfExists('holdings');
+  await knex.schema.withSchema('core').dropTableIfExists('portfolios');
 }

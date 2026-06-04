@@ -12,7 +12,7 @@ export interface ProfileRow {
 }
 
 export class ProfileRepository {
-  private table = 'users.profiles';
+  private table = 'core.profiles';
 
   async findByUserId(userId: string): Promise<ProfileRow | undefined> {
     return db(this.table).where({ user_id: userId }).first();

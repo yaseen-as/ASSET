@@ -180,15 +180,15 @@ export class PaperTradingService {
 
   async resetAccount(userId: string): Promise<void> {
     await this.orderRepo.deleteByUserAndSource(userId, 'paper');
-    await db('broker.paper_accounts')
+    await db('core.paper_accounts')
       .where({ user_id: userId })
       .update({ cash: DEFAULT_CASH, updated_at: db.fn.now() });
   }
 
   private async getOrCreateAccount(userId: string): Promise<{ cash: number }> {
-    let account = await db('broker.paper_accounts').where({ user_id: userId }).first();
+    let account = await db('core.paper_accounts').where({ user_id: userId }).first();
     if (!account) {
-      [account] = await db('broker.paper_accounts')
+      [account] = await db('core.paper_accounts')
         .insert({ user_id: userId, cash: DEFAULT_CASH })
         .returning('*');
     }
@@ -196,7 +196,7 @@ export class PaperTradingService {
   }
 
   private async updateCash(userId: string, delta: number): Promise<void> {
-    await db('broker.paper_accounts')
+    await db('core.paper_accounts')
       .where({ user_id: userId })
       .update({
         cash: db.raw('cash + ?', [delta]),

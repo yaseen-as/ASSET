@@ -16,13 +16,13 @@ interface RegistryRow {
   promoted_at: Date | null;
 }
 
-// Single source of truth for `recommendations.model_registry` reads/writes.
+// Single source of truth for `insights.model_registry` reads/writes.
 // Used by:
 //   - recommendations: inference (loader), scoring, promotion API, models API
 //   - backtest:        walk-forward engine (resolves model by id at run-start)
 export class ModelRegistryRepository {
   async getActive(name: ModelName): Promise<ModelMeta | null> {
-    const r = (await db('recommendations.model_registry')
+    const r = (await db('insights.model_registry')
       .where({ name })
       .whereIn('status', ['production', 'canary'])
       .orderByRaw(`CASE status WHEN 'production' THEN 0 ELSE 1 END, rollout_percent DESC, promoted_at DESC NULLS LAST`)
@@ -31,25 +31,25 @@ export class ModelRegistryRepository {
   }
 
   async getById(id: string): Promise<ModelMeta | null> {
-    const r = (await db('recommendations.model_registry').where({ id }).first()) as RegistryRow | undefined;
+    const r = (await db('insights.model_registry').where({ id }).first()) as RegistryRow | undefined;
     return r ? this.toMeta(r) : null;
   }
 
   async list(name?: ModelName): Promise<ModelMeta[]> {
-    const q = db('recommendations.model_registry').orderBy('created_at', 'desc');
+    const q = db('insights.model_registry').orderBy('created_at', 'desc');
     if (name) q.where({ name });
     const rows = (await q) as RegistryRow[];
     return rows.map((r) => this.toMeta(r));
   }
 
   async getArtifactBytes(modelId: string): Promise<Buffer> {
-    const r = await db('recommendations.model_artifacts').select('bytes').where({ model_id: modelId }).first();
+    const r = await db('insights.model_artifacts').select('bytes').where({ model_id: modelId }).first();
     if (!r) throw new Error(`Artifact not found for model ${modelId}`);
     return r.bytes as Buffer;
   }
 
   async updateStatus(id: string, status: ModelStatus, rolloutPercent: number): Promise<void> {
-    await db('recommendations.model_registry')
+    await db('insights.model_registry')
       .where({ id })
       .update({
         status,

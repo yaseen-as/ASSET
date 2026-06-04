@@ -8,7 +8,7 @@
 
 - **Frontend**: React 19, TypeScript, Vite 6, Tailwind CSS, Zustand, React Router v7, Chart.js/Recharts
 - **Backend**: Node.js (>=18), Express 4, TypeScript 5.7 (strict), Knex.js 3.1 (query builder + migrations)
-- **Database**: PostgreSQL 15 — two databases (`core_db`, `insights_db`) on a single DBMS, with schema isolation within each database
+- **Database**: PostgreSQL 15 — two databases (`core_db`, `insights_db`) on a single DBMS, one schema per service (`core`, `insights`)
 - **Cache**: Redis 7 — quote tick caching, symbol master caching (no pub/sub)
 - **Validation**: Zod schemas in `@platform/shared`
 - **Monorepo**: npm workspaces + Turborepo
@@ -21,10 +21,10 @@
 ├── packages/shared/         → @platform/shared (types, validators, constants, middleware, utils, errors)
 ├── services/
 │   ├── api-gateway/         → Port 3000 — JWT auth, rate limiting, proxy routing
-│   ├── core-service/        → Port 3001, schemas: auth, users, broker, portfolio, engagement, core
+│   ├── core-service/        → Port 3001, schema: core
 │   │                          (auth+OTP+JWT, profiles, Upstox OAuth, orders, holdings, watchlists,
 │   │                           paper trading, alerts, in-app notifications)
-│   └── insights-service/    → Port 3004, schemas: market, recommendations
+│   └── insights-service/    → Port 3004, schema: insights
 │                              (quotes/OHLCV/indicators + feature store + ML inference
 │                               + ranking + backtest simulator + model registry).
 │                              Ships two pods from one image:
@@ -71,7 +71,7 @@ kubectl apply -k k8s/overlays/dev
 
 ## Architecture Patterns
 
-- **Two databases**: `core_db` (core-service) and `insights_db` (insights-service), both on one PostgreSQL host. Schema isolation within each database. No cross-database joins.
+- **Two databases**: `core_db` (core-service) and `insights_db` (insights-service), both on one PostgreSQL host. One schema per service (`core` / `insights`). No cross-database joins.
 - **Service-to-service calls**: Internal HTTP via Kubernetes DNS (`http://core-service`, `http://insights-service`). No API gateway prefix internally.
 - **API Gateway proxying**: External calls go through gateway at port 3000. Path rewrite strips `/v1/<area>` prefix before forwarding.
 - **Polling, not streaming**: Frontend polls REST endpoints with `usePolling` hook (visibility-gated `setInterval`). No WebSocket servers, no Redis pub/sub.
@@ -126,15 +126,15 @@ When adding a new DTO, type, or shared middleware, add it here and re-export fro
 
 - **Two databases**: `core_db` and `insights_db`. Each service's `database.ts` has `ensureDatabase()` that auto-creates the database on first startup (connects to `postgres` default DB, runs `CREATE DATABASE`, then reconnects). Requires PG user to have `CREATEDB` privilege.
 - **Migrations**: Knex.js, located at `services/<name>/migrations/`. Auto-run on service startup.
-- **knex_migrations table**: Lives in service-specific tracking schema (`core` for core-service, `market` for insights-service).
-- **Schema prefix**: All tables are qualified with schema name (e.g., `broker.connections`, `engagement.alerts`).
+- **knex_migrations table**: Lives in the service's schema (`core` for core-service, `insights` for insights-service).
+- **Single schema per service**: every table lives in one schema — `core.*` (core-service) or `insights.*` (insights-service), e.g. `core.connections`, `insights.ohlcv_daily`. Always qualify table names with the schema.
 - **Naming**: snake_case for columns. Timestamps: `created_at`, `updated_at`. UUIDs for primary keys.
 - **Repository pattern**: Each domain has a `*.repository.ts` with typed query methods.
 
-| Service | Database | Schemas |
-|---------|----------|---------|
-| core-service | core_db | auth, users, broker, portfolio, engagement, core |
-| insights-service | insights_db | market, recommendations |
+| Service | Database | Schema |
+|---------|----------|--------|
+| core-service | core_db | core |
+| insights-service | insights_db | insights |
 
 ## Key Config / Environment Variables
 
@@ -159,7 +159,7 @@ Each service reads from `.env` locally or ConfigMap/Secret in K8s.
 - **OAuth flow**: User visits authorization URL → logs in on Upstox → redirected to `/v1/broker/callback/upstox?code=...&state=userId` → backend exchanges code for access_token → stored encrypted in DB
 - **Auth service**: `services/core-service/src/broker/upstox-auth.service.ts`
 - **API client**: `services/core-service/src/broker/upstox.client.ts` — all methods take `accessToken` param, token is always fetched from DB at call time (never from env)
-- **Instrument master**: CSV download from Upstox public endpoint, stored in `broker.symbol_master` table. Instrument key format: `NSE_EQ|{symbol}`.
+- **Instrument master**: CSV download from Upstox public endpoint, stored in `core.symbol_master` table. Instrument key format: `NSE_EQ|{symbol}`.
 - **Session**: Access tokens are daily — expire end-of-trading-day. No silent refresh; user re-authorizes each day.
 - **Onboarding**: After registration, user must connect broker before accessing trading features. Frontend checks `GET /v1/broker/status`.
 
@@ -192,9 +192,9 @@ Do not consider a backend task complete until the frontend reflects the change.
 - core-service domain layout: `src/auth/` (register/login/OTP/JWT), `src/users/` (profile), `src/broker/` (Upstox/orders/paper trading), `src/portfolio/` (holdings/watchlists), `src/engagement/` (alerts/notifications). All share one `db` Knex instance against `core_db`.
 - insights-service domain layout: `src/market/` (quotes/OHLCV/indicators), `src/features/` (feature store + materialization), `src/recommendations/` (model registry, ONNX inference, scoring, ranking, model-promotion API, crons), `src/backtest/` (walk-forward simulator + BullMQ queue + worker). All share one `db` Knex instance against `insights_db`.
 - **Two entrypoints, one image**: `src/server.ts` boots Express for HTTP traffic; `src/worker.ts` boots no HTTP, only the background jobs (feature materialization, daily ranking, performance backfill, backtest BullMQ consumer). Same image, different `command:`; deployed as separate `insights-service` and `insights-worker` Deployments.
-- ML inference: `RegistryRepository` reads `recommendations.model_registry`; ONNX bytes are stored in `recommendations.model_artifacts` (BYTEA) and loaded by `OnnxLoaderService` with an LRU cache sized by `MODEL_CACHE_SIZE`. Promotion via `POST /v1/models/:id/promote` evicts the cache entry in-process.
+- ML inference: `RegistryRepository` reads `insights.model_registry`; ONNX bytes are stored in `insights.model_artifacts` (BYTEA) and loaded by `OnnxLoaderService` with an LRU cache sized by `MODEL_CACHE_SIZE`. Promotion via `POST /v1/models/:id/promote` evicts the cache entry in-process.
 - Feature → inference flow is **in-process**: `ScorerService` takes a `FeatureStoreRepository` (not an HTTP client). The pre-consolidation HTTP hop from `recommendation-service → feature-service` is gone.
-- Backtest is BullMQ-shaped: HTTP `POST /v1/backtest/runs` inserts a row in `recommendations.backtest_results` and enqueues a job; the worker pod consumes it, runs `WalkForwardEngine`, and updates the same row. Frontend polls `GET /v1/backtest/runs/:id`.
+- Backtest is BullMQ-shaped: HTTP `POST /v1/backtest/runs` inserts a row in `insights.backtest_results` and enqueues a job; the worker pod consumes it, runs `WalkForwardEngine`, and updates the same row. Frontend polls `GET /v1/backtest/runs/:id`.
 - Frontend uses `usePolling` hook (visibility-gated): quotes 5s, notifications 30s, orders 30s (only when pending). No WebSocket clients.
 - When deleting a service file, grep the entire service for imports of that file (`grep -r 'deleted-file-name'`) before removing it — missed imports won't surface until runtime (`Cannot find module`).
 - The frontend at `localhost:5173` proxies API calls to `localhost:3000` (gateway). In K8s, ingress handles this.

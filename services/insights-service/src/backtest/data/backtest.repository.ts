@@ -19,7 +19,7 @@ interface Row {
 
 export class BacktestRepository {
   async insertQueued(req: { model_id: string; start_date: string; end_date: string; params: BacktestParams }): Promise<string> {
-    const [row] = await db('recommendations.backtest_results')
+    const [row] = await db('insights.backtest_results')
       .insert({
         model_id: req.model_id,
         start_date: req.start_date,
@@ -31,7 +31,7 @@ export class BacktestRepository {
   }
 
   async saveResult(id: string, summary: BacktestSummary): Promise<void> {
-    await db('recommendations.backtest_results')
+    await db('insights.backtest_results')
       .where({ id })
       .update({
         sharpe_ratio: summary.sharpe_ratio,
@@ -45,13 +45,13 @@ export class BacktestRepository {
   }
 
   async getById(id: string): Promise<BacktestRecord | null> {
-    const r = (await db('recommendations.backtest_results').where({ id }).first()) as Row | undefined;
+    const r = (await db('insights.backtest_results').where({ id }).first()) as Row | undefined;
     if (!r) return null;
     return this.toRecord(r);
   }
 
   async listByModel(modelId: string, limit = 20): Promise<BacktestRecord[]> {
-    const rows = (await db('recommendations.backtest_results')
+    const rows = (await db('insights.backtest_results')
       .where({ model_id: modelId })
       .orderBy('created_at', 'desc')
       .limit(limit)) as Row[];

@@ -7,7 +7,7 @@ export async function tradingDaysFromOhlcv(
   start: string,
   end: string,
 ): Promise<string[]> {
-  const rows = await db('market.ohlcv_daily')
+  const rows = await db('insights.ohlcv_daily')
     .distinct('date')
     .where('exchange', exchange)
     .whereBetween('date', [start, end])

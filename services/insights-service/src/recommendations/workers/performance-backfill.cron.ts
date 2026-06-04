@@ -35,22 +35,22 @@ export class PerformanceBackfillCron {
         WITH targets AS (
           SELECT p.id, p.symbol, p.as_of_date,
                  (
-                   SELECT close FROM market.ohlcv_daily o
+                   SELECT close FROM insights.ohlcv_daily o
                    WHERE o.symbol = p.symbol AND o.exchange = 'NSE'
                      AND o.date >= p.as_of_date + INTERVAL '${h.days} days'
                    ORDER BY o.date ASC LIMIT 1
                  ) AS future_close,
                  (
-                   SELECT close FROM market.ohlcv_daily o
+                   SELECT close FROM insights.ohlcv_daily o
                    WHERE o.symbol = p.symbol AND o.exchange = 'NSE'
                      AND o.date = p.as_of_date
                    LIMIT 1
                  ) AS entry_close
-          FROM recommendations.performance_logs p
+          FROM insights.performance_logs p
           WHERE p.${h.col} IS NULL
             AND p.as_of_date + INTERVAL '${h.days * 2} days' <= NOW()::date
         )
-        UPDATE recommendations.performance_logs p
+        UPDATE insights.performance_logs p
         SET ${h.col} = (t.future_close / NULLIF(t.entry_close, 0)) - 1,
             resolved_at = NOW()
         FROM targets t

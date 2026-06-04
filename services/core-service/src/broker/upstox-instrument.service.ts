@@ -26,7 +26,7 @@ export interface SymbolInfo {
 
 /**
  * Instrument master for Upstox — downloads the CSV from Upstox's public endpoint,
- * parses it, upserts into `broker.symbol_master`, and caches lookups in Redis.
+ * parses it, upserts into `core.symbol_master`, and caches lookups in Redis.
  *
  * Upstox instrument key format: `{exchange_segment}|{instrument_key}`
  *   e.g. "NSE_EQ|INE009A01021" for INFOSYS

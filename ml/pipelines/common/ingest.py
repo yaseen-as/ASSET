@@ -1,8 +1,8 @@
-"""Backfill market.ohlcv_daily from Yahoo Finance.
+"""Backfill insights.ohlcv_daily from Yahoo Finance.
 
 Used to seed insights_db when the production Upstox backfill cron isn't
 wired yet. Pulls daily OHLCV via yfinance, normalizes to the schema used
-by market.ohlcv_daily, and upserts via ON CONFLICT.
+by insights.ohlcv_daily, and upserts via ON CONFLICT.
 
 Symbols are passed without the Yahoo suffix — `--exchange NSE` appends `.NS`
 and `--exchange BSE` appends `.BO` when querying Yahoo, then the suffix is
@@ -75,13 +75,13 @@ def fetch_one(symbol: str, exchange: str, start: date, end: date) -> pd.DataFram
 
 
 def upsert(df: pd.DataFrame) -> int:
-    """Bulk upsert into market.ohlcv_daily. Returns row count written."""
+    """Bulk upsert into insights.ohlcv_daily. Returns row count written."""
     if df.empty:
         return 0
     records = df.to_dict(orient="records")
     stmt = text(
         """
-        INSERT INTO market.ohlcv_daily
+        INSERT INTO insights.ohlcv_daily
           (symbol, exchange, date, open, high, low, close, volume)
         VALUES
           (:symbol, :exchange, :date, :open, :high, :low, :close, :volume)

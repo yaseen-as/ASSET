@@ -19,7 +19,7 @@ export interface AlertRow {
 }
 
 export class AlertRepository {
-  private table = 'engagement.alerts';
+  private table = 'core.alerts';
 
   async create(data: Partial<AlertRow>): Promise<AlertRow> {
     const [row] = await db(this.table).insert(data).returning('*');

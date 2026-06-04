@@ -56,7 +56,7 @@ export interface OrderStats {
 }
 
 export class OrderRepository {
-  private table = 'broker.order_history';
+  private table = 'core.order_history';
 
   async create(data: CreateOrderDTO): Promise<OrderRow> {
     const [row] = await db(this.table).insert(data).returning('*');

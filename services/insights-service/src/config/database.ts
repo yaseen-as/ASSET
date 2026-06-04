@@ -31,18 +31,17 @@ export const db = knex({
     user: config.db.user,
     password: config.db.password,
   },
-  searchPath: ['market', 'recommendations', 'public'],
+  searchPath: ['insights', 'public'],
   pool: { min: 2, max: 10 },
   migrations: {
     directory: './migrations',
-    schemaName: 'market',
+    schemaName: 'insights',
     tableName: 'knex_migrations',
   },
 });
 
 export async function initDatabase(): Promise<void> {
   await ensureDatabase();
-  await db.raw('CREATE SCHEMA IF NOT EXISTS market');
-  await db.raw('CREATE SCHEMA IF NOT EXISTS recommendations');
+  await db.raw('CREATE SCHEMA IF NOT EXISTS insights');
   await db.migrate.latest();
 }

@@ -1,8 +1,8 @@
 """VADER sentiment scoring for stock news headlines.
 
-Reads headlines from `market.news_headlines` (table populated by an
+Reads headlines from `insights.news_headlines` (table populated by an
 optional ingestion job) and writes per-(symbol, date) compound scores
-into `recommendations.sentiment_scores`.
+into `insights.sentiment_scores`.
 
 VADER is rule-based (no training), so there is no ONNX export. A
 synthetic `model_registry` row is still inserted so downstream services
@@ -32,7 +32,7 @@ def ensure_vader_model_row() -> str:
     """Idempotently insert a stub model_registry row for VADER. Returns model_id."""
     with conn() as c:
         existing = c.execute(
-            text("SELECT id FROM recommendations.model_registry WHERE name = 'sentiment' AND version = 'vader-1.0' LIMIT 1")
+            text("SELECT id FROM insights.model_registry WHERE name = 'sentiment' AND version = 'vader-1.0' LIMIT 1")
         ).fetchone()
         if existing:
             return str(existing[0])
@@ -41,7 +41,7 @@ def ensure_vader_model_row() -> str:
             c.execute(
                 text(
                     """
-                    INSERT INTO recommendations.model_registry
+                    INSERT INTO insights.model_registry
                       (id, name, version, framework, artifact_uri, feature_set,
                        training_data, metrics, status, rollout_percent, created_by, promoted_at)
                     VALUES
@@ -58,7 +58,7 @@ def fetch_headlines(start: date, end: date) -> pd.DataFrame:
     return read_sql(
         """
         SELECT symbol, exchange, published_at::date AS as_of_date, headline
-        FROM market.news_headlines
+        FROM insights.news_headlines
         WHERE published_at::date BETWEEN %(start)s AND %(end)s
         """,
         params={"start": start, "end": end},
@@ -87,7 +87,7 @@ def write_scores(model_id: str, rows: pd.DataFrame) -> int:
                 c.execute(
                     text(
                         """
-                        INSERT INTO recommendations.sentiment_scores
+                        INSERT INTO insights.sentiment_scores
                           (symbol, exchange, as_of_date, model_id, score, features_ref)
                         VALUES
                           (:symbol, :exchange, :as_of_date, :model_id, :score, CAST(:fr AS jsonb))

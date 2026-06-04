@@ -1,10 +1,10 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('broker').createTable('order_history', (table) => {
+  await knex.schema.withSchema('core').createTable('order_history', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('user_id').notNullable();
-    table.uuid('connection_id').nullable().references('id').inTable('broker.connections').onDelete('SET NULL');
+    table.uuid('connection_id').nullable().references('id').inTable('core.connections').onDelete('SET NULL');
     table.string('broker_order_id', 50).nullable();
     table.string('symbol', 50).notNullable();
     table.string('exchange', 10).notNullable();
@@ -30,5 +30,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.withSchema('broker').dropTableIfExists('order_history');
+  await knex.schema.withSchema('core').dropTableIfExists('order_history');
 }

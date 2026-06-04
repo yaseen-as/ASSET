@@ -11,14 +11,14 @@ interface Row {
 
 export class FeatureStoreRepository {
   async getOne(exchange: string, symbol: string, date: string, featureSet: string): Promise<FeatureVector | null> {
-    const r = (await db('recommendations.feature_store')
+    const r = (await db('insights.feature_store')
       .where({ exchange, symbol, as_of_date: date, feature_set: featureSet })
       .first()) as Row | undefined;
     return r ? this.toVector(r) : null;
   }
 
   async getBatch(exchange: string, date: string, featureSet: string, symbols?: string[]): Promise<FeatureVector[]> {
-    const q = db('recommendations.feature_store')
+    const q = db('insights.feature_store')
       .where({ exchange, as_of_date: date, feature_set: featureSet });
     if (symbols && symbols.length) q.whereIn('symbol', symbols);
     const rows = (await q) as Row[];
@@ -35,7 +35,7 @@ export class FeatureStoreRepository {
       features: JSON.stringify(v.features),
     }));
     // Partition by month must exist before insert; the default partition catches gaps.
-    await db('recommendations.feature_store')
+    await db('insights.feature_store')
       .insert(rows)
       .onConflict(['symbol', 'exchange', 'as_of_date', 'feature_set'])
       .merge(['features', 'computed_at']);
