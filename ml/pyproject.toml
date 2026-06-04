@@ -5,6 +5,7 @@ description = "Offline training pipeline for SwingTrade V2 ML models"
 requires-python = ">=3.11"
 dependencies = [
   "pandas>=2.2.0",
+  "pyarrow>=15.0.0",
   "numpy>=1.26.0",
   "scikit-learn>=1.4.0",
   "lightgbm>=4.3.0",

@@ -83,14 +83,12 @@ def _per_symbol(df: pd.DataFrame) -> pd.DataFrame:
 
 def build_features(ohlcv: pd.DataFrame) -> pd.DataFrame:
     """Apply per-symbol feature engineering across the whole universe."""
-    out = (
-        ohlcv.groupby("symbol", group_keys=False)
-        .apply(_per_symbol, include_groups=False)
-        .reset_index(drop=True)
-    )
-    # Reattach symbol/exchange/date columns the groupby drops
-    if "symbol" not in out.columns:
-        out = ohlcv[["symbol", "exchange", "date"]].join(out)
+    pieces = []
+    for symbol, group in ohlcv.groupby("symbol", group_keys=False):
+        piece = _per_symbol(group)
+        piece["symbol"] = symbol
+        pieces.append(piece)
+    out = pd.concat(pieces, ignore_index=True)
     keep = ["symbol", "exchange", "date", *FEATURE_COLS]
     return out[keep]
 

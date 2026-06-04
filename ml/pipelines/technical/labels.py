@@ -30,11 +30,12 @@ def _per_symbol_labels(df: pd.DataFrame, horizon: int, threshold: float) -> pd.D
 
 def build_labels(ohlcv: pd.DataFrame, horizon: int = 5, threshold: float = 0.03) -> pd.DataFrame:
     """Returns OHLCV with `forward_return` and binary `label` columns."""
-    return (
-        ohlcv.groupby("symbol", group_keys=False)
-        .apply(_per_symbol_labels, horizon=horizon, threshold=threshold, include_groups=False)
-        .reset_index(drop=True)
-    )
+    pieces = []
+    for symbol, group in ohlcv.groupby("symbol", group_keys=False):
+        piece = _per_symbol_labels(group, horizon=horizon, threshold=threshold)
+        piece["symbol"] = symbol
+        pieces.append(piece)
+    return pd.concat(pieces, ignore_index=True)
 
 
 def join_features_labels(

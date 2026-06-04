@@ -26,6 +26,20 @@ app.use(
 // ─── Logging ───
 app.use(requestLogger);
 
+// ─── Normalize public URL prefix ───
+// Vite dev and k8s ingress send `/api/v1/*`; some callers send `/v1/*`
+// directly. Strip a leading `/api` here so downstream routing only needs
+// to care about `/v1/*`. req.originalUrl is preserved by Express and used
+// later in pathRewrite to compute the upstream path.
+app.use((req, _res, next) => {
+  if (req.url === '/api') {
+    req.url = '/';
+  } else if (req.url.startsWith('/api/')) {
+    req.url = req.url.slice(4); // '/api/v1/foo' -> '/v1/foo'
+  }
+  next();
+});
+
 // ─── Middleware ───
 app.use(correlationIdMiddleware);
 app.use(defaultLimiter);
