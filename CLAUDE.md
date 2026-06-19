@@ -38,7 +38,9 @@
 │   └── overlays/
 │       ├── dev/             → k3d: 1 replica, hot-reload, hostPath mounts
 │       └── prod/            → 2-3 replicas, resource limits, TLS, pre-built images
-└── docs/                    → SERVICES.md, FEATURES.md, PHASE1_PLAN.md, PHASE3_PLAN.md, srs.md
+└── ml/                      → Python 3.11 offline ML training pipeline (LightGBM → ONNX).
+                                Not a deployed service; runs locally or via Jenkins.
+                                Produces ONNX artifacts uploaded into insights.model_registry.
 ```
 
 ## Commands
@@ -136,6 +138,58 @@ When adding a new DTO, type, or shared middleware, add it here and re-export fro
 | core-service | core_db | core |
 | insights-service | insights_db | insights |
 
+## ML Training Pipeline (`ml/`)
+
+Python 3.11 offline pipeline that produces the ONNX models served by insights-service. **Not a deployed service** — runs locally or as a Jenkins job, never inside the Node services.
+
+### Layout
+
+```
+ml/
+├── pyproject.toml          → Python dependencies (pandas, lightgbm, onnx, yfinance, pyarrow, sqlalchemy)
+├── .env                    → DB creds for the pipeline (separate from services/*/.env)
+├── pipelines/
+│   ├── common/             → Shared helpers: db.py, walk_forward.py, registry.py, ingest.py (yfinance loader)
+│   ├── technical/          → v1 model: 16 TA features → LightGBM → ONNX
+│   ├── technical_v2/       → v2 model: 23 features (cross-sectional ranks, Bollinger, drawdown), rank-based labels
+│   ├── fundamental/        → P/E, EPS growth, ROE features. Dormant — source table empty in this repo.
+│   ├── sentiment/          → VADER lexicon scoring of headlines. No training step.
+│   └── meta/               → Stacked model: combines tech + fund + sent scores. Trains last.
+└── artifacts/              → Parquet files + .onnx + .meta.json (gitignored)
+```
+
+### Pipeline stages
+
+Each model follows: **ingest → extract → transform → labels → train → evaluate → export_onnx → registry**.
+
+```bash
+cd ml
+python3.11 -m venv .venv && .venv/bin/pip install -e .
+.venv/bin/python -m pipelines.common.ingest --symbols ... --start ... --end ...    # yfinance → insights.ohlcv_daily
+.venv/bin/python -m pipelines.technical.extract --start ... --end ...
+.venv/bin/python -m pipelines.technical.transform
+.venv/bin/python -m pipelines.technical.labels
+.venv/bin/python -m pipelines.technical.train       # ← LightGBM fit
+.venv/bin/python -m pipelines.technical.evaluate    # ← held-out test metrics
+.venv/bin/python -m pipelines.technical.export_onnx # ← LightGBM → ONNX, parity-check vs booster
+.venv/bin/python -m pipelines.common.registry --name technical --version YYYY.MM.DD --feature-set technical_v1 \
+  --onnx artifacts/technical_model.onnx --meta artifacts/technical_model.meta.json --eval artifacts/technical_model.eval.json
+```
+
+### Hand-off between Python and Node
+
+- ONNX bytes get inserted into `insights.model_artifacts` (BYTEA) with metadata in `insights.model_registry`, `status='draft'`.
+- Insights-service `OnnxLoaderService` reads bytes from BYTEA (or `file://` URIs), creates an `ort.InferenceSession`, LRU-caches it.
+- `POST /v1/models/:id/promote` flips status to `production` and evicts the cache so new bytes load.
+- **Feature contract:** `training_data.feature_cols` on the registry row is the source of truth for input column order. The Node `technical-builder.ts` MUST produce identical column names and order — drift between Python `FEATURE_COLS` and the Node feature builder silently breaks inference.
+
+### Common Python pipeline gotchas
+
+- All pipeline commands must be run from `ml/` (or with `ml/` on `PYTHONPATH`) so `python -m pipelines.X.Y` resolves the package.
+- `pyproject.toml` requires Python 3.11. A 3.10 venv silently fails on type-annotation features.
+- `pyarrow` is required for parquet I/O — pandas doesn't bundle it. Declared in `pyproject.toml`.
+- Walk-forward split is anchored on `df["date"].max().date()` by default. Drop `--reference` to override; the val/test windows are short (months, not years) so a small universe produces tiny test splits and noisy metrics.
+
 ## Key Config / Environment Variables
 
 Each service reads from `.env` locally or ConfigMap/Secret in K8s.
@@ -183,6 +237,8 @@ Do not consider a backend task complete until the frontend reflects the change.
 
 ## Common Gotchas
 
+- **Local Postgres networking**: on machines also running k3d, the default `docker run -p 5432:5432 postgres:15` fails with `ECONNRESET` because k3d's iptables rules interfere with the docker bridge. Workaround: `docker run --network host postgres:15` instead of `-p` port mapping. Symptom: `psql` says "server closed the connection unexpectedly" even though `docker logs` shows Postgres healthy.
+- **Local DB bootstrap**: [services/insights-service/src/scripts/init-local-db.ts](services/insights-service/src/scripts/init-local-db.ts) creates the database + schemas + runs migrations. Use it for fresh local setups: `DB_HOST=localhost DB_USER=postgres DB_PASSWORD=postgres DB_NAME=insights_db ../../node_modules/.bin/ts-node src/scripts/init-local-db.ts` from `services/insights-service/`. Requires Node 20 — older Node breaks on `??` operator in newer dependencies.
 - Internal service-to-service URLs must NOT use the API gateway prefix (`/v1/...`). Use the direct route path.
 - Instrument master must be synced before market quotes or order placement can work. Auto-syncs if stale (>24h) on core-service startup.
 - Broker tokens (Upstox access_token) are AES-encrypted in the DB. Use `encrypt()`/`decrypt()` from `services/core-service/src/utils/encryption.ts`.
