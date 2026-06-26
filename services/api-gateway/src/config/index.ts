@@ -8,7 +8,7 @@ export const config = {
   jwt: {
     publicKeyPath: process.env.JWT_PUBLIC_KEY_PATH || './keys/public.pem',
     // For development, fallback to symmetric secret
-    secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
+    secret: process.env.JWT_SECRET,
   },
 
   redis: {

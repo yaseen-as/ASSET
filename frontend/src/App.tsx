@@ -50,7 +50,7 @@ export default function App() {
       {/* Protected dashboard routes */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/market" element={<MarketPage />} />
+        {/* <Route path="/market" element={<MarketPage />} /> */}
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/watchlist" element={<WatchlistPage />} />
         <Route path="/alerts" element={<AlertsPage />} />

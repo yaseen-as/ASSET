@@ -78,4 +78,22 @@ export class UpstoxAuthService {
       expiresAt: conn.expires_at,
     };
   }
+
+  /**
+   * Connects a user to the Upstox sandbox environment.
+   */
+  async connectSandbox(userId: string): Promise<void> {
+
+    const token = config.upstox.sandboxToken;
+    // const profile = await upstoxClient.getUserProfile(token);
+
+    await this.repo.upsert(userId, 'upstox', {
+        broker_user_id: encrypt(userId),
+        access_token: encrypt(token),
+        refresh_token: null,
+        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        token_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        is_active: true,
+    });
+}
 }

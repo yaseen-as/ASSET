@@ -32,6 +32,8 @@ export const config = {
     key: process.env.BROKER_TOKEN_ENCRYPTION_KEY || '',
   },
   upstox: {
+    sandbox: process.env.UPSTOX_SANDBOX === 'true',
+    sandboxToken: process.env.UPSTOX_SANDBOX_TOKEN || '',
     clientId: process.env.UPSTOX_CLIENT_ID || '',
     clientSecret: process.env.UPSTOX_CLIENT_SECRET || '',
     redirectUri: process.env.UPSTOX_REDIRECT_URI || 'http://localhost:3000/v1/broker/callback/upstox',
@@ -42,3 +44,4 @@ export const config = {
   },
   insightsServiceUrl: process.env.INSIGHTS_SERVICE_URL || 'http://localhost:3004',
 };
+  

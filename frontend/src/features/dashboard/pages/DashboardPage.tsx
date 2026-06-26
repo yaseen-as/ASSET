@@ -7,17 +7,17 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 // Top 5 symbols to show in the dashboard ticker
-const DASHBOARD_SYMBOLS = [
-  'NSE:RELIANCE',
-  'NSE:INFY',
-  'NSE:TCS',
-  'NSE:HDFCBANK',
-  'NSE:SBIN',
-];
+// const DASHBOARD_SYMBOLS = [
+//   'NSE:RELIANCE',
+//   'NSE:INFY',
+//   'NSE:TCS',
+//   'NSE:HDFCBANK',
+//   'NSE:SBIN',
+// ];
 
 export default function DashboardPage() {
   const { holdings, totalValue, totalPnl, fetchHoldings, isLoading } = usePortfolioStore();
-  const { ticks } = useQuotes(DASHBOARD_SYMBOLS, 5000);
+  // const { ticks } = useQuotes(DASHBOARD_SYMBOLS, 5000);
 
   useEffect(() => {
     fetchHoldings();
@@ -30,7 +30,7 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
       {/* Live market mini-ticker */}
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      {/* <div className="flex gap-3 overflow-x-auto pb-1">
         {DASHBOARD_SYMBOLS.map((sym) => {
           const tick = ticks[sym];
           const symbol = sym.split(':')[1];
@@ -63,7 +63,7 @@ export default function DashboardPage() {
           <Activity className="h-4 w-4" />
           View All
         </Link>
-      </div>
+      </div> */}
 
       {/* Portfolio Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

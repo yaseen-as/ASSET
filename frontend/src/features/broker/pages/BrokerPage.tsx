@@ -24,9 +24,9 @@ interface BrokerStatus {
 
 interface BrokerConnection {
   id: string;
-  broker_name: string;
-  broker_user_id: string;
-  is_active: boolean;
+  brokerName: string;
+  brokerNser_id: string;
+  isActive: boolean;
   created_at: string;
   expires_at: string | null;
 }
@@ -55,6 +55,7 @@ export default function BrokerPage() {
     try {
       const { data } = await api.get('/broker/connections');
       setConnections(data.data || []);
+      // console.log("🚀 ~ fetchConnections ~ data.data:", data.data)
     } finally {
       setIsLoading(false);
     }
@@ -66,15 +67,52 @@ export default function BrokerPage() {
     fetchHoldings();
   }, []);
 
+  // const handleConnectUpstox = async () => {
+  //   setConnecting(true);
+  //   try {
+  //     const { data } = await api.get('/broker/connect/upstox');
+  //     const authUrl: string = data.data.authUrl;
+  //     // Redirect current tab — backend will redirect back to /broker/connected after auth
+  //     window.location.href = authUrl;
+  //   } catch (err: any) {
+  //     toast.error(err.response?.data?.error?.message || 'Failed to start Upstox authorization');
+  //     setConnecting(false);
+  //   }
+  // };
   const handleConnectUpstox = async () => {
     setConnecting(true);
+
     try {
       const { data } = await api.get('/broker/connect/upstox');
-      const authUrl: string = data.data.authUrl;
-      // Redirect current tab — backend will redirect back to /broker/connected after auth
-      window.location.href = authUrl;
+
+      const response = data.data;
+
+      // Sandbox Mode
+      if (response.sandbox) {
+        toast.success('Sandbox mode enabled.');
+
+        // Refresh broker status & connections
+        await fetchStatus();
+        await fetchConnections();
+
+        return;
+      }
+
+      // Production OAuth Flow
+      if (response.authUrl) {
+        window.location.href = response.authUrl;
+        return;
+      }
+
+      throw new Error('Invalid response from server.');
     } catch (err: any) {
-      toast.error(err.response?.data?.error?.message || 'Failed to start Upstox authorization');
+      toast.error(
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to connect to Upstox'
+      );
+    } finally {
       setConnecting(false);
     }
   };
@@ -183,7 +221,9 @@ export default function BrokerPage() {
               className="flex items-center gap-2 rounded-lg border border-brand-600/40 bg-brand-600/10 px-4 py-2 text-sm font-medium text-brand-400 hover:bg-brand-600/20 disabled:opacity-50"
             >
               <ExternalLink className="h-4 w-4" />
-              {connecting ? 'Redirecting…' : 'Re-authorize with Upstox'}
+              {connecting
+                ? 'Connecting...'
+                : 'Connect with Upstox'}
             </button>
           </div>
         ) : (
@@ -220,7 +260,7 @@ export default function BrokerPage() {
               {connections.map((c) => (
                 <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-800/50 p-4">
                   <div>
-                    <p className="font-medium capitalize">{c.broker_name.replace('_', ' ')}</p>
+                    <p className="font-medium capitalize">{c.brokerName.replace('_', ' ')}</p>
                     <p className="text-sm text-gray-400">User: {c.broker_user_id}</p>
                     <p className="text-xs text-gray-500">
                       Connected: {new Date(c.created_at).toLocaleString()}

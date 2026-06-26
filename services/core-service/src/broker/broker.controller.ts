@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { BrokerService } from './broker.service';
 import { UpstoxAuthService } from './upstox-auth.service';
+import { config } from '../config';
 
 const brokerService = new BrokerService();
 const upstoxAuth = new UpstoxAuthService();
@@ -9,10 +10,24 @@ export class BrokerController {
   // ─── Upstox OAuth flow ──────────────────────────────────────────────────────
 
   /** Returns the Upstox authorization URL. Frontend opens this in a browser. */
-  static async connectUpstox(req: Request, res: Response, next: NextFunction): Promise<void> {
+  static async connectUpstox(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const userId = req.headers['x-user-id'] as string;
-      const authUrl = upstoxAuth.buildAuthUrl(userId);
+      const isSandbox = config.upstox.sandbox;
+      if (isSandbox) {
+        await upstoxAuth.connectSandbox(userId);
+
+        return res.json({
+          success: true,
+          data: {
+            sandbox: true,
+            connected: true,
+            broker: "upstox",
+            message: "Sandbox mode enabled."
+          }
+        });
+      }
+        const authUrl = upstoxAuth.buildAuthUrl(userId);
       res.json({ success: true, data: { authUrl } });
     } catch (error) { next(error); }
   }
