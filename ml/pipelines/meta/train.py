@@ -29,44 +29,50 @@ FEATURE_COLS = ["technical_score", "fundamental_score", "sentiment_score"]
 
 
 def fetch_component_scores(start: date, end: date, exchange: str = "NSE") -> pd.DataFrame:
-    query = """
-        WITH t AS (
-          SELECT symbol, exchange, as_of_date, AVG(score) AS technical_score
-          FROM insights.technical_scores
-          WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
-          GROUP BY symbol, exchange, as_of_date
-        ),
-        f AS (
-          SELECT symbol, exchange, as_of_date, AVG(score) AS fundamental_score
-          FROM insights.fundamental_scores
-          WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
-          GROUP BY symbol, exchange, as_of_date
-        ),
-        sen AS (
-          SELECT symbol, exchange, as_of_date, AVG(score) AS sentiment_score
-          FROM insights.sentiment_scores
-          WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
-          GROUP BY symbol, exchange, as_of_date
-        )
-        SELECT
-          COALESCE(t.symbol, f.symbol, sen.symbol) AS symbol,
-          COALESCE(t.exchange, f.exchange, sen.exchange) AS exchange,
-          COALESCE(t.as_of_date, f.as_of_date, sen.as_of_date) AS date,
-          t.technical_score,
-          f.fundamental_score,
-          sen.sentiment_score
-        FROM t
-        FULL OUTER JOIN f USING (symbol, exchange, as_of_date)
-        FULL OUTER JOIN sen USING (symbol, exchange, as_of_date)
-    """
-    df = read_sql(query, params={"start": start, "end": end, "exchange": exchange})
-    df["date"] = pd.to_datetime(df["date"])
-    # Fill missing component scores with 0.5 (neutral) so the meta-model
-    # learns to give them less weight when sparse. Alternative: drop rows
-    # without all three — keeps the dataset cleaner but smaller.
-    for c in FEATURE_COLS:
-        df[c] = df[c].fillna(0.5).astype("float64")
-    return df
+        query = """
+                WITH base AS (
+                    SELECT DISTINCT symbol, exchange, date AS as_of_date
+                    FROM insights.ohlcv_daily
+                    WHERE exchange = %(exchange)s AND date BETWEEN %(start)s AND %(end)s
+                ),
+                t AS (
+                    SELECT symbol, exchange, as_of_date, AVG(score) AS technical_score
+                    FROM insights.technical_scores
+                    WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
+                    GROUP BY symbol, exchange, as_of_date
+                ),
+                f AS (
+                    SELECT symbol, exchange, as_of_date, AVG(score) AS fundamental_score
+                    FROM insights.fundamental_scores
+                    WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
+                    GROUP BY symbol, exchange, as_of_date
+                ),
+                sen AS (
+                    SELECT symbol, exchange, as_of_date, AVG(score) AS sentiment_score
+                    FROM insights.sentiment_scores
+                    WHERE exchange = %(exchange)s AND as_of_date BETWEEN %(start)s AND %(end)s
+                    GROUP BY symbol, exchange, as_of_date
+                )
+                SELECT
+                    base.symbol,
+                    base.exchange,
+                    base.as_of_date AS date,
+                    t.technical_score,
+                    f.fundamental_score,
+                    sen.sentiment_score
+                FROM base
+                LEFT JOIN t USING (symbol, exchange, as_of_date)
+                LEFT JOIN f USING (symbol, exchange, as_of_date)
+                LEFT JOIN sen USING (symbol, exchange, as_of_date)
+        """
+        df = read_sql(query, params={"start": start, "end": end, "exchange": exchange})
+        df["date"] = pd.to_datetime(df["date"])
+        # Fill missing component scores with 0.5 (neutral) so the meta-model
+        # learns to give them less weight when sparse. Alternative: drop rows
+        # without all three keeps the dataset cleaner but smaller.
+        for c in FEATURE_COLS:
+                df[c] = df[c].fillna(0.5).astype("float64")
+        return df
 
 
 def main() -> None:

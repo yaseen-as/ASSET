@@ -31,13 +31,14 @@ VADER = SentimentIntensityAnalyzer()
 def ensure_vader_model_row() -> str:
     """Idempotently insert a stub model_registry row for VADER. Returns model_id."""
     with conn() as c:
-        existing = c.execute(
-            text("SELECT id FROM insights.model_registry WHERE name = 'sentiment' AND version = 'vader-1.0' LIMIT 1")
-        ).fetchone()
-        if existing:
-            return str(existing[0])
-        model_id = str(uuid.uuid4())
         with c.begin():
+            existing = c.execute(
+                text("SELECT id FROM insights.model_registry WHERE name = 'sentiment' AND version = 'vader-1.0' LIMIT 1")
+            ).fetchone()
+            if existing:
+                return str(existing[0])
+
+            model_id = str(uuid.uuid4())
             c.execute(
                 text(
                     """

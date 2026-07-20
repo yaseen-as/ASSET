@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import date, timedelta
 
 import lightgbm as lgb
 import numpy as np
@@ -46,20 +47,44 @@ def main() -> None:
     parser.add_argument("--out", default="artifacts/meta_model.onnx")
     parser.add_argument("--opset", type=int, default=13)
     parser.add_argument("--tol", type=float, default=1e-5)
+    parser.add_argument("--start", type=date.fromisoformat, default=None, help="Optional verify sample start date (YYYY-MM-DD)")
+    parser.add_argument("--end", type=date.fromisoformat, default=None, help="Optional verify sample end date (YYYY-MM-DD)")
+    parser.add_argument("--sample-size", type=int, default=200)
     args = parser.parse_args()
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     export(args.model, args.out, opset=args.opset)
     print(f"Wrote {args.out}")
 
-    # Pull a small recent slice from the DB to verify against the same scores layout.
-    from datetime import date, timedelta
-    end = date.today()
-    start = end - timedelta(days=30)
-    sample = fetch_component_scores(start, end).head(200)
+    # Prefer user-supplied verify window; otherwise, try recent data first.
+    verify_end = args.end or date.today()
+    verify_start = args.start or (verify_end - timedelta(days=30))
+    sample = fetch_component_scores(verify_start, verify_end).head(args.sample_size)
+
+    # If recent window has no rows, fall back to latest available date span.
     if sample.empty:
-        print("WARN: no component scores in recent window — skipping parity verify")
+        from ..common.db import read_sql
+
+        span = read_sql(
+            """
+            SELECT MIN(date) AS min_date, MAX(date) AS max_date
+            FROM insights.ohlcv_daily
+            WHERE exchange = 'NSE'
+            """
+        )
+        min_date = span.loc[0, "min_date"]
+        max_date = span.loc[0, "max_date"]
+        if pd.notna(min_date) and pd.notna(max_date):
+            fallback_start = pd.to_datetime(min_date).date()
+            fallback_end = pd.to_datetime(max_date).date()
+            sample = fetch_component_scores(fallback_start, fallback_end).tail(args.sample_size)
+            if not sample.empty:
+                print(f"Using fallback verify range {fallback_start}..{fallback_end}")
+
+    if sample.empty:
+        print("WARN: no component-score rows available for parity verify")
         return
+
     result = verify(args.model, args.out, sample, tol=args.tol)
     with open(args.out.replace(".onnx", ".verify.json"), "w") as f:
         json.dump(result, f, indent=2)

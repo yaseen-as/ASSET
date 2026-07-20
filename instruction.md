@@ -197,7 +197,13 @@ python -m pipelines.common.registry \
   --onnx artifacts/fundamental_model.onnx \
   --meta artifacts/fundamental_model.meta.json
 
-# Sentiment (VADER — no training needed; ingests headlines)
+# Sentiment (VADER — no training needed)
+python -m pipelines.sentiment.ingest \
+  --symbols RELIANCE,TCS,INFY \
+  --exchange NSE \
+  --start 2026-05-01 --end 2026-05-13
+# Or load from file:
+# python -m pipelines.sentiment.ingest --input ./pipelines/sentiment/historical_news.sample.csv --start 2026-05-01 --end 2026-05-13
 python -m pipelines.sentiment.score_headlines --start 2026-05-01 --end 2026-05-13
 # A model_registry row for VADER is created idempotently on first run.
 
