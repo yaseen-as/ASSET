@@ -45,6 +45,31 @@ def _rank_within(df: pd.DataFrame, value_col: str, by: str) -> pd.Series:
     return df.groupby(by)[value_col].rank(pct=True, method="average")
 
 
+def _impute_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Impute sparse quarterly fundamentals so training doesn't collapse to zero rows."""
+    out = df.copy()
+
+    # First try cross-sectional medians per date, then global medians.
+    winsor_cols = [
+        "pe_ratio_w",
+        "eps_w",
+        "eps_growth_yoy_w",
+        "roe_w",
+        "debt_to_equity_w",
+        "revenue_growth_yoy_w",
+    ]
+    for col in winsor_cols:
+        out[col] = out[col].fillna(out.groupby("as_of_date")[col].transform("median"))
+        out[col] = out[col].fillna(out[col].median())
+
+    # Neutral rank fallback when sector/rank data is sparse.
+    rank_cols = ["pe_rank_in_sector", "roe_rank_in_sector", "eps_growth_rank_in_sector"]
+    for col in rank_cols:
+        out[col] = out[col].fillna(0.5)
+
+    return out
+
+
 def build_features(raw: pd.DataFrame) -> pd.DataFrame:
     df = raw.copy()
 
@@ -55,6 +80,7 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
     df["pe_rank_in_sector"] = _rank_within(df, "pe_ratio_w", "sector")
     df["roe_rank_in_sector"] = _rank_within(df, "roe_w", "sector")
     df["eps_growth_rank_in_sector"] = _rank_within(df, "eps_growth_yoy_w", "sector")
+    df = _impute_features(df)
 
     out = df[["symbol", "exchange", "as_of_date", *FEATURE_COLS]].copy()
     out = out.rename(columns={"as_of_date": "date"})

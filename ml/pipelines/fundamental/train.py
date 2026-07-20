@@ -1,8 +1,7 @@
 """Train a LightGBM classifier on fundamental features.
 
-Labels come from the same forward-return rule used by the technical
-pipeline (labels.py), so the two models are directly comparable and
-their scores can feed the meta-model with no recalibration.
+Labels use the same forward-return rule as technical, but are generated
+through the dedicated fundamental labels module.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from ..common.walk_forward import apply_split, make_split
-from ..technical.labels import build_labels, join_features_labels
+from .labels import build_labels, join_features_labels
 from .transform import FEATURE_COLS
 
 
@@ -54,6 +53,9 @@ def main() -> None:
     parser.add_argument("--ohlcv", default="artifacts/raw_ohlcv.parquet")
     parser.add_argument("--out-dir", default="artifacts")
     parser.add_argument("--reference", type=date.fromisoformat, default=None)
+    parser.add_argument("--train-years", type=float, default=3.0)
+    parser.add_argument("--val-months", type=float, default=6.0)
+    parser.add_argument("--test-months", type=float, default=3.0)
     parser.add_argument("--horizon", type=int, default=int(os.environ.get("LABEL_HORIZON_DAYS", "5")))
     parser.add_argument("--threshold", type=float, default=float(os.environ.get("LABEL_THRESHOLD", "0.03")))
     args = parser.parse_args()
@@ -64,9 +66,16 @@ def main() -> None:
     ohlcv = pd.read_parquet(args.ohlcv)
     labels = build_labels(ohlcv, horizon=args.horizon, threshold=args.threshold)
     df = join_features_labels(features, labels)
+    if df.empty:
+        raise SystemExit("No joined training rows after label/feature filtering. Ensure OHLCV covers the same symbols/dates and rerun transform.")
 
     ref = args.reference or df["date"].max().date()
-    split = make_split(ref)
+    split = make_split(
+        ref,
+        train_years=args.train_years,
+        val_months=args.val_months,
+        test_months=args.test_months,
+    )
     train, val, test = apply_split(df, split)
     if train.empty or val.empty:
         raise SystemExit(f"Empty train ({len(train)}) or val ({len(val)}) split — widen the data range.")

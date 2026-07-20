@@ -139,6 +139,12 @@ cp .env.example .env   # edit DB credentials
 
 ### 5.2 Run the technical model end-to-end
 ```bash
+# 0. extract the data
+python -m pipelines.common.ingest \
+  --symbols RELIANCE,TCS,INFY,HDFCBANK,ICICIBANK \
+  --start 2024-01-01 \
+  --end 2026-05-01
+
 # 1. Pull OHLCV from market.ohlcv_daily
 python -m pipelines.technical.extract --start 2024-01-01 --end 2026-05-01
 
@@ -170,10 +176,20 @@ python -m pipelines.common.registry \
 Same pattern; just swap the pipeline subdirectory.
 
 ```bash
-# Fundamental (requires market.fundamentals_daily populated)
+# Fundamental (populate insights.fundamentals_daily first)
+python -m pipelines.fundamental.ingest \
+  --symbols RELIANCE,HDFCBANK,TCS \
+  --exchange NSE \
+  --start 2024-01-01 --end 2026-05-01
+# Labels are built from OHLCV, so keep symbol universe/date range aligned.
+python -m pipelines.common.ingest \
+  --symbols RELIANCE,HDFCBANK,TCS \
+  --exchange NSE \
+  --start 2024-01-01 --end 2026-05-01
 python -m pipelines.fundamental.extract --start 2024-01-01 --end 2026-05-01
 python -m pipelines.fundamental.transform
-python -m pipelines.fundamental.train
+python -m pipelines.fundamental.labels
+python -m pipelines.fundamental.train --train-years 3 --val-months 6 --test-months 3
 python -m pipelines.fundamental.evaluate
 python -m pipelines.fundamental.export_onnx
 python -m pipelines.common.registry \

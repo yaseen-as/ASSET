@@ -9,14 +9,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import date
 
 import lightgbm as lgb
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from ..common.walk_forward import apply_split, make_split
+from ..common.walk_forward import Split, apply_split
 from ..technical.evaluate import precision_at_k_per_day
-from ..technical.labels import build_labels, join_features_labels
+from .labels import build_labels, join_features_labels
 from .transform import FEATURE_COLS
 
 
@@ -40,8 +41,15 @@ def main() -> None:
 
     with open(args.meta) as f:
         meta = json.load(f)
-    ref = pd.to_datetime(meta["split"]["test_end"]).date()
-    _, _, test = apply_split(df, make_split(ref))
+    split = Split(
+        train_start=date.fromisoformat(meta["split"]["train_start"]),
+        train_end=date.fromisoformat(meta["split"]["train_end"]),
+        val_start=date.fromisoformat(meta["split"]["val_start"]),
+        val_end=date.fromisoformat(meta["split"]["val_end"]),
+        test_start=date.fromisoformat(meta["split"]["test_start"]),
+        test_end=date.fromisoformat(meta["split"]["test_end"]),
+    )
+    _, _, test = apply_split(df, split)
     if test.empty:
         raise SystemExit("Test split is empty.")
 
